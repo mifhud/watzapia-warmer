@@ -21,9 +21,13 @@ class MessageManager {
             const configPath = path.join(__dirname, '../../data/config.json');
             if (await fs.pathExists(configPath)) {
                 this.config = await fs.readJson(configPath);
-                // Add targetGroupName if it doesn't exist
-                if (!this.config.targetGroupName) {
-                    this.config.targetGroupName = "Watzapia";
+                // Add targetGroupName1 if it doesn't exist
+                if (!this.config.targetGroupName1) {
+                    this.config.targetGroupName1 = this.config.targetGroupName || "Watzapia";
+                    // Remove old property if it exists
+                    if (this.config.targetGroupName) {
+                        delete this.config.targetGroupName;
+                    }
                     await fs.writeJson(configPath, this.config, { spaces: 2 });
                 }
             } else {
@@ -31,12 +35,12 @@ class MessageManager {
                     warmingInterval: 30, // minutes
                     timezone: 'Asia/Jakarta',
                     maxMessagesPerDay: 50,
-kingHours: {
+                    workingHours: {
                         start: '09:00',
                         end: '18:00'
                     },
                     enableWorkingHoursOnly: true,
-                    targetGroupName: "Watzapia", // Default group name
+                    targetGroupName1: "Watzapia", // Default group name
                     sendToGroup: true // Enable sending to group by default
                 };
             }
@@ -46,11 +50,12 @@ kingHours: {
                 warmingInterval: 30,
                 timezone: 'Asia/Jakarta',
                 maxMessagesPerDay: 50,
+                workingHours: {
                     start: '09:00',
                     end: '18:00'
                 },
                 enableWorkingHoursOnly: true,
-                targetGroupName: "Watzapia", // Default group name
+                targetGroupName1: "Watzapia", // Default group name
                 sendToGroup: true // Enable sending to group by default
             };
         }
@@ -126,6 +131,7 @@ kingHours: {
         this.warmerInterval = setTimeout(async () => {
             try {
                 await this.processWarming();
+                await this.processWarmingGroup();
                 this.scheduleNextMessage(); // Schedule next iteration
             } catch (error) {
                 console.error('Error in warming process:', error);
@@ -136,6 +142,42 @@ kingHours: {
     }
 
     async processWarming() {
+        try {
+            // Check if we're in working hours (if enabled)
+            if (this.config.enableWorkingHoursOnly && !this.isWithinWorkingHours()) {
+                console.log('Outside working hours, skipping warming cycle');
+                return;
+            }
+
+            // Get connected contacts
+            const connectedContacts = this.whatsappManager.getConnectedContacts();
+            
+            // Original direct messaging between contacts
+            if (connectedContacts.length < 2) {
+                console.log('Not enough connected contacts for warming');
+                return;
+            }
+            
+            // Select random sender
+            const senderId = connectedContacts[Math.floor(Math.random() * connectedContacts.length)];
+            const possibleRecipients = connectedContacts.filter(id => id !== senderId);
+            const recipientId = possibleRecipients[Math.floor(Math.random() * possibleRecipients.length)];
+            
+            // Check daily message limits
+            if (await this.hasReachedDailyLimit(senderId)) {
+                console.log(`Contact ${senderId} has reached daily message limit`);
+                return;
+            }
+            
+            // Send warming message to individual
+            await this.sendWarmingMessage(senderId, recipientId);
+
+        } catch (error) {
+            console.error('Error in warming process:', error);
+        }
+    }
+
+    async processWarmingGroup() {
         try {
             // Check if we're in working hours (if enabled)
             if (this.config.enableWorkingHoursOnly && !this.isWithinWorkingHours()) {
@@ -164,28 +206,7 @@ kingHours: {
                 
                 // Send warming message to group
                 await this.sendWarmingMessageToGroup(senderId);
-            } else {
-                // Original direct messaging between contacts
-                if (connectedContacts.length < 2) {
-                    console.log('Not enough connected contacts for warming');
-                    return;
-                }
-                
-                // Select random sender
-                const senderId = connectedContacts[Math.floor(Math.random() * connectedContacts.length)];
-                const possibleRecipients = connectedContacts.filter(id => id !== senderId);
-                const recipientId = possibleRecipients[Math.floor(Math.random() * possibleRecipients.length)];
-                
-                // Check daily message limits
-                if (await this.hasReachedDailyLimit(senderId)) {
-                    console.log(`Contact ${senderId} has reached daily message limit`);
-                    return;
-                }
-                
-                // Send warming message to individual
-                await this.sendWarmingMessage(senderId, recipientId);
             }
-
         } catch (error) {
             console.error('Error in warming process:', error);
         }
@@ -294,14 +315,14 @@ kingHours: {
 
             // Generate message with variables - use group name instead of recipient name
             const messageData = await this.templateManager.generateMessage(template.id, {
-                name: this.config.targetGroupName
+                name: this.config.targetGroupName1
             });
 
             // Find the group and send message
-            console.log(`Attempting to send message to group: ${this.config.targetGroupName}`);
+            console.log(`Attempting to send message to group: ${this.config.targetGroupName1}`);
             const result = await this.whatsappManager.sendMessageToGroup(
                 senderId, 
-                this.config.targetGroupName, 
+                this.config.targetGroupName1, 
                 messageData.message
             );
 
@@ -309,7 +330,7 @@ kingHours: {
             await this.contactManager.updateContactMessageStats(senderId, 'sent');
 
             // Log the warming message
-            console.log(`Warming message sent to group: ${senderContact.name} -> ${this.config.targetGroupName}`);
+            console.log(`Warming message sent to group: ${senderContact.name} -> ${this.config.targetGroupName1}`);
             console.log(`Template: ${template.name}`);
             console.log(`Message: ${messageData.message}`);
 
@@ -319,7 +340,7 @@ kingHours: {
                 senderId,
                 recipientId: 'group',
                 senderName: senderContact.name,
-                recipientName: this.config.targetGroupName,
+                recipientName: this.config.targetGroupName1,
                 message: messageData.message,
                 templateId: template.id,
                 templateName: template.name,

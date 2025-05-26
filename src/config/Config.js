@@ -55,7 +55,10 @@ class Config {
             // Export/Import settings
             enableAutoBackup: true,
             backupInterval: 24, // hours
-            maxBackupFiles: 7
+            maxBackupFiles: 7,
+            
+            // Group settings
+            targetGroupName1: "Watzapia"
         };
     }
 
@@ -206,6 +209,14 @@ class Config {
             validated.theme = updates.theme;
         }
         
+        // Validate targetGroupName1
+        if (updates.targetGroupName1 !== undefined) {
+            if (typeof updates.targetGroupName1 !== 'string') {
+                throw new Error('Target Group Name 1 must be a string');
+            }
+            validated.targetGroupName1 = updates.targetGroupName1;
+        }
+        
         return validated;
     }
 
@@ -303,6 +314,10 @@ class Config {
             enableWorkingHoursOnly: {
                 type: 'boolean',
                 description: 'Only send messages during working hours'
+            },
+            targetGroupName1: {
+                type: 'string',
+                description: 'Name of the target WhatsApp group'
             }
         };
     }

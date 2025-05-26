@@ -248,6 +248,7 @@ class WhatsAppAutoWarmer {
     populateConfigForm() {
         document.getElementById('warming-interval').value = this.config.warmingInterval || 30;
         document.getElementById('max-messages').value = this.config.maxMessagesPerDay || 50;
+        document.getElementById('targetGroupName1').value = this.config.targetGroupName1 || '';
         document.getElementById('working-hours-only').checked = this.config.enableWorkingHoursOnly || false;
 
         if (this.config.workingHours) {
@@ -600,6 +601,7 @@ class WhatsAppAutoWarmer {
             const formData = {
                 warmingInterval: parseInt(document.getElementById('warming-interval').value),
                 maxMessagesPerDay: parseInt(document.getElementById('max-messages').value),
+                targetGroupName1: document.getElementById('targetGroupName1').value,
                 enableWorkingHoursOnly: document.getElementById('working-hours-only').checked,
                 workingHours: {
                     start: document.getElementById('work-start').value,
