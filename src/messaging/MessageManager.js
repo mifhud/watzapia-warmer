@@ -32,8 +32,8 @@ class MessageManager {
                 }
             } else {
                 this.config = {
-                    minWarmingInterval: 15, // minutes
-                    maxWarmingInterval: 45, // minutes
+                    minWarmingInterval: 15, // seconds
+                    maxWarmingInterval: 45, // seconds
                     timezone: 'Asia/Jakarta',
                     maxMessagesPerDay: 50,
                     workingHours: {
@@ -48,8 +48,8 @@ class MessageManager {
         } catch (error) {
             console.error('Error loading config:', error);
             this.config = {
-                minWarmingInterval: 15, // minutes
-                maxWarmingInterval: 45, // minutes
+                minWarmingInterval: 15, // seconds
+                maxWarmingInterval: 45, // seconds
                 timezone: 'Asia/Jakarta',
                 maxMessagesPerDay: 50,
                 workingHours: {
@@ -87,7 +87,7 @@ class MessageManager {
             const maxInterval = this.config.maxWarmingInterval || 45;
             
             console.log(`Auto warmer started with ${connectedContacts.length} connected contacts`);
-            console.log(`Warming interval range: ${minInterval}-${maxInterval} minutes`);
+            console.log(`Warming interval range: ${minInterval}-${maxInterval} seconds`);
             
             return {
                 success: true,
@@ -142,12 +142,12 @@ class MessageManager {
         
         console.log(`Using random warming interval: ${randomInterval} minutes (range: ${minInterval}-${maxInterval})`);
         
-        const intervalMs = randomInterval * 60 * 1000;
+        const intervalMs = randomInterval * 1000;
         
         this.warmerInterval = setTimeout(async () => {
             try {
                 // Check if current minute is even or odd
-                const currentMinute = new Date().getMinutes();
+                const currentMinute = new Date().getSeconds();
                 if (currentMinute % 2 === 0) {
                     // Even minute - execute processWarming
                     console.log('Even minute - executing processWarming');
@@ -294,11 +294,11 @@ class MessageManager {
             if (await this.hasReachedDailyLimit(recipientId)) {
                 console.log(`Contact ${recipientId} has reached daily message limit, skipping reply`);
             } else {
-                // Send reply message from recipient to sender after a random delay (30-120 seconds)
-                const replyDelaySeconds = Math.floor(Math.random() * 90) + 30; // Random delay between 30-120 seconds
-                console.log(`Scheduling reply message in ${replyDelaySeconds} seconds`);
+                // // Send reply message from recipient to sender after a random delay (30-120 seconds)
+                // const replyDelaySeconds = Math.floor(Math.random() * 90) + 30; // Random delay between 30-120 seconds
+                // console.log(`Scheduling reply message in ${replyDelaySeconds} seconds`);
                 
-                setTimeout(async () => {
+                // setTimeout(async () => {
                     // Check if we're still within working hours when it's time to send the reply
                     if (this.config.enableWorkingHoursOnly && !this.isWithinWorkingHours()) {
                         console.log('Outside working hours, skipping reply message');
@@ -312,7 +312,7 @@ class MessageManager {
                     }
                     
                     await this.sendReplyMessage(recipientId, senderId, messageData.message);
-                }, replyDelaySeconds * 1000);
+                // }, replyDelaySeconds * 1000);
             }
 
         } catch (error) {

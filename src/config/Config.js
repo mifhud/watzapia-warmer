@@ -6,8 +6,8 @@ class Config {
         this.configFile = path.join(__dirname, '../../data/config.json');
         this.defaultConfig = {
             // Warming settings
-            minWarmingInterval: 15, // minutes
-            maxWarmingInterval: 45, // minutes
+            minWarmingInterval: 15, // seconds
+            maxWarmingInterval: 45, // seconds
             timezone: 'Asia/Jakarta',
             maxMessagesPerDay: 50,
 

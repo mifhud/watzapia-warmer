@@ -102,7 +102,7 @@ class WhatsAppAutoWarmer {
                 this.loadContacts(),
                 this.loadTemplates(),
                 this.loadConfiguration(),
-                // this.loadWarmerStatus()
+                this.loadWarmerStatus()
             ]);
             this.updateDashboard();
         } catch (error) {
@@ -274,6 +274,17 @@ class WhatsAppAutoWarmer {
         const stopBtn = document.getElementById('stop-warmer-btn');
         const warmerInfo = document.getElementById('warmer-info');
 
+        // Check if all elements exist before proceeding
+        if (!statusIndicator || !statusText || !warmerStatus || !startBtn || !stopBtn || !warmerInfo) {
+            console.error('One or more UI elements not found for warmer status update');
+            return;
+        }
+
+        // Ensure warmerStatus object is initialized
+        if (!this.warmerStatus) {
+            this.warmerStatus = { isActive: false };
+        }
+
         if (this.warmerStatus.isActive) {
             statusIndicator.innerHTML = '<i class="fas fa-circle text-success me-1"></i>';
             statusText.textContent = 'Running';
@@ -288,9 +299,23 @@ class WhatsAppAutoWarmer {
             stopBtn.style.display = 'block';
             warmerInfo.style.display = 'block';
 
-            document.getElementById('warmer-min-interval').textContent = this.warmerStatus.minInterval || this.warmerStatus.config?.minWarmingInterval || 15;
-            document.getElementById('warmer-max-interval').textContent = this.warmerStatus.maxInterval || this.warmerStatus.config?.maxWarmingInterval || 45;
-            document.getElementById('warmer-connected').textContent = this.warmerStatus.connectedContacts || 0;
+            const warmerMinInterval = document.getElementById('warmer-min-interval');
+            const warmerMaxInterval = document.getElementById('warmer-max-interval');
+            const warmerConnected = document.getElementById('warmer-connected');
+
+            if (warmerMinInterval) {
+                warmerMinInterval.textContent = this.warmerStatus.minInterval || 
+                    (this.warmerStatus.config ? this.warmerStatus.config.minWarmingInterval : 15) || 15;
+            }
+            
+            if (warmerMaxInterval) {
+                warmerMaxInterval.textContent = this.warmerStatus.maxInterval || 
+                    (this.warmerStatus.config ? this.warmerStatus.config.maxWarmingInterval : 45) || 45;
+            }
+            
+            if (warmerConnected) {
+                warmerConnected.textContent = this.warmerStatus.connectedContacts || 0;
+            }
         } else {
             statusIndicator.innerHTML = '<i class="fas fa-circle text-danger me-1"></i>';
             statusText.textContent = 'Stopped';
@@ -576,6 +601,11 @@ class WhatsAppAutoWarmer {
 
     async stopAutoWarmer() {
         try {
+            // Ensure warmerStatus is initialized
+            if (!this.warmerStatus) {
+                this.warmerStatus = { isActive: false };
+            }
+            
             const response = await fetch('/api/warmer/stop', {
                 method: 'POST'
             });
@@ -587,13 +617,19 @@ class WhatsAppAutoWarmer {
 
             const result = await response.json();
             this.warmerStatus.isActive = false;
-            this.updateWarmerUI();
+            
+            // Update UI safely
+            try {
+                this.updateWarmerUI();
+            } catch (uiError) {
+                console.error('Error updating UI after stopping warmer:', uiError);
+            }
 
             this.showAlert('Auto warmer stopped successfully', 'success');
             this.addActivityLog('Auto warmer stopped', 'warning');
         } catch (error) {
             console.error('Error stopping auto warmer:', error);
-            this.showAlert(error.message, 'danger');
+            this.showAlert(error.message || 'Failed to stop auto warmer', 'danger');
         }
     }
 
