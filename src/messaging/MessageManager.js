@@ -130,8 +130,17 @@ class MessageManager {
         
         this.warmerInterval = setTimeout(async () => {
             try {
-                await this.processWarming();
-                await this.processWarmingGroup();
+                // Check if current minute is even or odd
+                const currentMinute = new Date().getMinutes();
+                if (currentMinute % 2 === 0) {
+                    // Even minute - execute processWarming
+                    console.log('Even minute - executing processWarming');
+                    await this.processWarming();
+                } else {
+                    // Odd minute - execute processWarmingGroup1
+                    console.log('Odd minute - executing processWarmingGroup1');
+                    await this.processWarmingGroup1();
+                }
                 this.scheduleNextMessage(); // Schedule next iteration
             } catch (error) {
                 console.error('Error in warming process:', error);
@@ -177,7 +186,7 @@ class MessageManager {
         }
     }
 
-    async processWarmingGroup() {
+    async processWarmingGroup1() {
         try {
             // Check if we're in working hours (if enabled)
             if (this.config.enableWorkingHoursOnly && !this.isWithinWorkingHours()) {
@@ -205,7 +214,7 @@ class MessageManager {
                 }
                 
                 // Send warming message to group
-                await this.sendWarmingMessageToGroup(senderId);
+                await this.sendWarmingMessageToGroup(senderId, this.config.targetGroupName1);
             }
         } catch (error) {
             console.error('Error in warming process:', error);
@@ -296,7 +305,7 @@ class MessageManager {
         }
     }
     
-    async sendWarmingMessageToGroup(senderId) {
+    async sendWarmingMessageToGroup(senderId, targetGroupName1) {
         try {
             // Get sender contact information
             const senderContact = await this.contactManager.getContact(senderId);
@@ -315,14 +324,14 @@ class MessageManager {
 
             // Generate message with variables - use group name instead of recipient name
             const messageData = await this.templateManager.generateMessage(template.id, {
-                name: this.config.targetGroupName1
+                name: targetGroupName1
             });
 
             // Find the group and send message
-            console.log(`Attempting to send message to group: ${this.config.targetGroupName1}`);
+            console.log(`Attempting to send message to group: ${targetGroupName1}`);
             const result = await this.whatsappManager.sendMessageToGroup(
                 senderId, 
-                this.config.targetGroupName1, 
+                targetGroupName1, 
                 messageData.message
             );
 
@@ -330,7 +339,7 @@ class MessageManager {
             await this.contactManager.updateContactMessageStats(senderId, 'sent');
 
             // Log the warming message
-            console.log(`Warming message sent to group: ${senderContact.name} -> ${this.config.targetGroupName1}`);
+            console.log(`Warming message sent to group: ${senderContact.name} -> ${targetGroupName1}`);
             console.log(`Template: ${template.name}`);
             console.log(`Message: ${messageData.message}`);
 
@@ -340,7 +349,7 @@ class MessageManager {
                 senderId,
                 recipientId: 'group',
                 senderName: senderContact.name,
-                recipientName: this.config.targetGroupName1,
+                recipientName: targetGroupName1,
                 message: messageData.message,
                 templateId: template.id,
                 templateName: template.name,
