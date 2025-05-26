@@ -9,8 +9,7 @@ class Config {
             warmingInterval: 30, // minutes
             timezone: 'Asia/Jakarta',
             maxMessagesPerDay: 50,
-            replyTimeout: 24, // hours
-            
+
             // Working hours
             workingHours: {
                 start: '09:00',
@@ -132,14 +131,6 @@ class Config {
             validated.maxMessagesPerDay = maxMessages;
         }
         
-        // Validate reply timeout
-        if (updates.replyTimeout !== undefined) {
-            const timeout = parseInt(updates.replyTimeout);
-            if (isNaN(timeout) || timeout < 1 || timeout > 168) {
-                throw new Error('Reply timeout must be between 1 and 168 hours');
-            }
-            validated.replyTimeout = timeout;
-        }
         
         // Validate working hours
         if (updates.workingHours !== undefined) {
@@ -300,13 +291,7 @@ class Config {
                 max: 1000,
                 description: 'Maximum messages per contact per day'
             },
-            replyTimeout: {
-                type: 'number',
-                min: 1,
-                max: 168,
-                unit: 'hours',
-                description: 'Time to wait for reply before sending next message'
-            },
+
             workingHours: {
                 type: 'object',
                 properties: {

@@ -31,8 +31,7 @@ class MessageManager {
                     warmingInterval: 30, // minutes
                     timezone: 'Asia/Jakarta',
                     maxMessagesPerDay: 50,
-                    replyTimeout: 24, // hours
-                    workingHours: {
+kingHours: {
                         start: '09:00',
                         end: '18:00'
                     },
@@ -47,8 +46,6 @@ class MessageManager {
                 warmingInterval: 30,
                 timezone: 'Asia/Jakarta',
                 maxMessagesPerDay: 50,
-                replyTimeout: 24,
-                workingHours: {
                     start: '09:00',
                     end: '18:00'
                 },
