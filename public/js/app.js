@@ -260,14 +260,9 @@ class WhatsAppAutoWarmer {
     updateDashboard() {
         const totalContacts = this.contacts.length;
         const connectedContacts = this.contacts.filter(c => c.status === 'connected').length;
-        const pendingReplies = this.warmerStatus.pendingReplies || 0;
 
         document.getElementById('total-contacts').textContent = totalContacts;
         document.getElementById('connected-contacts').textContent = connectedContacts;
-        document.getElementById('pending-replies').textContent = pendingReplies;
-
-        // Update messages today (would need to be calculated from message history)
-        document.getElementById('messages-today').textContent = '0'; // Placeholder
     }
 
     updateWarmerUI() {

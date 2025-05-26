@@ -10,7 +10,6 @@ class MessageManager {
         
         this.isWarmerActive = false;
         this.warmerInterval = null;
-        this.pendingReplies = new Map(); // messageId -> { senderId, recipientId, sentAt, templateId }
         this.messageQueue = [];
         this.config = null;
         
@@ -103,7 +102,6 @@ class MessageManager {
             
             return {
                 success: true,
-                pendingReplies: this.pendingReplies.size,
                 queuedMessages: this.messageQueue.length
             };
         } catch (error) {
@@ -139,8 +137,7 @@ class MessageManager {
                 return;
             }
 
-            // Clean up expired pending replies
-            this.cleanupExpiredReplies();
+
 
             // Get connected contacts
             const connectedContacts = this.whatsappManager.getConnectedContacts();
@@ -149,18 +146,8 @@ class MessageManager {
                 return;
             }
 
-            // Find contacts that can send messages (no pending replies)
-            const availableSenders = connectedContacts.filter(contactId => 
-                !this.hasPendingReply(contactId)
-            );
-
-            if (availableSenders.length === 0) {
-                console.log('No available senders (all have pending replies)');
-                return;
-            }
-
-            // Select random sender and recipient
-            const senderId = availableSenders[Math.floor(Math.random() * availableSenders.length)];
+            // Select random sender
+            const senderId = connectedContacts[Math.floor(Math.random() * connectedContacts.length)];
             const possibleRecipients = connectedContacts.filter(id => id !== senderId);
             const recipientId = possibleRecipients[Math.floor(Math.random() * possibleRecipients.length)];
 
@@ -209,18 +196,6 @@ class MessageManager {
             const client = this.whatsappManager.getClient(senderId);
             const result = await client.sendMessage(recipientNumber, messageData.message);
 
-            // Track the message for reply requirement
-            this.pendingReplies.set(result.id._serialized, {
-                senderId,
-                recipientId,
-                senderName: senderContact.name,
-                recipientName: recipientContact.name,
-                sentAt: new Date().toISOString(),
-                templateId: template.id,
-                templateName: template.name,
-                message: messageData.message
-            });
-
             // Update contact statistics
             await this.contactManager.updateContactMessageStats(senderId, 'sent');
 
@@ -243,6 +218,31 @@ class MessageManager {
                 sentAt: new Date().toISOString()
             });
 
+            // Check if recipient has reached daily limit before scheduling reply
+            if (await this.hasReachedDailyLimit(recipientId)) {
+                console.log(`Contact ${recipientId} has reached daily message limit, skipping reply`);
+            } else {
+                // Send reply message from recipient to sender after a random delay (30-120 seconds)
+                const replyDelaySeconds = Math.floor(Math.random() * 90) + 30; // Random delay between 30-120 seconds
+                console.log(`Scheduling reply message in ${replyDelaySeconds} seconds`);
+                
+                setTimeout(async () => {
+                    // Check if we're still within working hours when it's time to send the reply
+                    if (this.config.enableWorkingHoursOnly && !this.isWithinWorkingHours()) {
+                        console.log('Outside working hours, skipping reply message');
+                        return;
+                    }
+                    
+                    // Check again if recipient has reached daily limit
+                    if (await this.hasReachedDailyLimit(recipientId)) {
+                        console.log(`Contact ${recipientId} has reached daily message limit, skipping reply`);
+                        return;
+                    }
+                    
+                    await this.sendReplyMessage(recipientId, senderId, messageData.message);
+                }, replyDelaySeconds * 1000);
+            }
+
         } catch (error) {
             console.error('Error sending warming message:', error);
             throw error;
@@ -250,58 +250,79 @@ class MessageManager {
     }
 
     formatPhoneNumber(phoneNumber) {
-        // Remove all non-digit characters except +
-        let formatted = phoneNumber.replace(/[^\d+]/g, '');
+        // // Remove all non-digit characters except +
+        // let formatted = phoneNumber.replace(/[^\d+]/g, '');
         
-        // If it doesn't start with +, add country code (assuming Indonesia +62)
-        if (!formatted.startsWith('+')) {
-            if (formatted.startsWith('0')) {
-                formatted = '+62' + formatted.substring(1);
-            } else {
-                formatted = '+62' + formatted;
-            }
-        }
+        // // If it doesn't start with +, add country code (assuming Indonesia +62)
+        // if (!formatted.startsWith('+')) {
+        //     if (formatted.startsWith('0')) {
+        //         formatted = '+62' + formatted.substring(1);
+        //     } else {
+        //         formatted = '+62' + formatted;
+        //     }
+        // }
         
         // Add @c.us for WhatsApp format
-        return formatted.replace('+', '') + '@c.us';
+        return phoneNumber.replace('+', '') + '@c.us';
     }
+    
+    async sendReplyMessage(senderId, recipientId, originalMessage) {
+        try {
+            // Get contact information
+            const senderContact = await this.contactManager.getContact(senderId);
+            const recipientContact = await this.contactManager.getContact(recipientId);
 
-    hasPendingReply(contactId) {
-        for (const [messageId, data] of this.pendingReplies.entries()) {
-            if (data.senderId === contactId) {
-                return true;
+            if (!senderContact || !recipientContact) {
+                throw new Error('Sender or recipient contact not found for reply');
             }
-        }
-        return false;
-    }
 
-    cleanupExpiredReplies() {
-        const now = moment().tz(this.config.timezone);
-        const timeoutHours = this.config.replyTimeout;
+            // Create reply templates based on the original message
+            const replyTemplates = [
+                `Hey ${recipientContact.name}, thanks for your message! How are you doing today?`,
+                `Hi ${recipientContact.name}! Good to hear from you. What's new?`,
+                `Hello ${recipientContact.name}! Thanks for reaching out. How's everything going?`,
+                `${recipientContact.name}, nice to hear from you! How have you been?`
+            ];
 
-        for (const [messageId, data] of this.pendingReplies.entries()) {
-            const sentAt = moment(data.sentAt).tz(this.config.timezone);
-            const hoursSinceSent = now.diff(sentAt, 'hours');
+            // Select random reply template
+            const replyMessage = replyTemplates[Math.floor(Math.random() * replyTemplates.length)];
 
-            if (hoursSinceSent >= timeoutHours) {
-                console.log(`Reply timeout expired for message from ${data.senderName} to ${data.recipientName}`);
-                this.pendingReplies.delete(messageId);
-            }
+            // Format recipient phone number for WhatsApp
+            const recipientNumber = this.formatPhoneNumber(recipientContact.phoneNumber);
+
+            // Send reply message
+            const client = this.whatsappManager.getClient(senderId);
+            const result = await client.sendMessage(recipientNumber, replyMessage);
+
+            // Update contact statistics
+            await this.contactManager.updateContactMessageStats(senderId, 'sent');
+
+            // Log the reply message
+            console.log(`Reply message sent: ${senderContact.name} -> ${recipientContact.name}`);
+            console.log(`Message: ${replyMessage}`);
+
+            // Save to message history
+            await this.saveMessageToHistory({
+                type: 'reply',
+                senderId,
+                recipientId,
+                senderName: senderContact.name,
+                recipientName: recipientContact.name,
+                message: replyMessage,
+                messageId: result.id._serialized,
+                sentAt: new Date().toISOString(),
+                replyToMessage: originalMessage
+            });
+
+        } catch (error) {
+            console.error('Error sending reply message:', error);
+            // Don't throw the error to prevent it from affecting the main flow
         }
     }
 
     async handleIncomingMessage(messageId, senderId, recipientId) {
-        // Check if this is a reply to a pending warming message
-        for (const [pendingMessageId, data] of this.pendingReplies.entries()) {
-            if (data.recipientId === senderId && data.senderId === recipientId) {
-                console.log(`Reply received: ${data.recipientName} replied to ${data.senderName}`);
-                this.pendingReplies.delete(pendingMessageId);
-                
-                // Update contact statistics
-                await this.contactManager.updateContactMessageStats(senderId, 'received');
-                break;
-            }
-        }
+        // Update contact statistics
+        await this.contactManager.updateContactMessageStats(senderId, 'received');
     }
 
     isWithinWorkingHours() {
@@ -325,7 +346,7 @@ class MessageManager {
             const todayMessages = history.filter(msg => 
                 msg.senderId === contactId && 
                 msg.sentAt.startsWith(today) &&
-                msg.type === 'warming'
+                (msg.type === 'warming' || msg.type === 'reply')
             );
 
             return todayMessages.length >= this.config.maxMessagesPerDay;
@@ -363,7 +384,6 @@ class MessageManager {
         return {
             isActive: this.isWarmerActive,
             connectedContacts: connectedContacts.length,
-            pendingReplies: this.pendingReplies.size,
             queuedMessages: this.messageQueue.length,
             config: this.config,
             nextMessageIn: this.warmerInterval ? this.config.warmingInterval : null,
