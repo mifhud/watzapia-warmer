@@ -361,6 +361,29 @@ class WhatsAppManager {
         return connected;
     }
 
+    async findGroupByName(contactId, groupName) {
+        try {
+            const client = this.getClient(contactId);
+            if (!client) {
+                throw new Error('WhatsApp client not connected for this contact');
+            }
+
+            // Get all chats
+            const chats = await client.getChats();
+            
+            // Filter to find the group with the specified name
+            const group = chats.find(chat => 
+                chat.name && 
+                chat.name.toLowerCase() === groupName.toLowerCase()
+            );
+
+            return group;
+        } catch (error) {
+            console.error(`Failed to find group ${groupName} for contact ${contactId}:`, error);
+            throw error;
+        }
+    }
+
     async sendMessage(contactId, to, message) {
         try {
             const client = this.getClient(contactId);
@@ -372,6 +395,22 @@ class WhatsAppManager {
             return result;
         } catch (error) {
             console.error(`Failed to send message from ${contactId} to ${to}:`, error);
+            throw error;
+        }
+    }
+    
+    async sendMessageToGroup(contactId, groupName, message) {
+        try {
+            const group = await this.findGroupByName(contactId, groupName);
+            if (!group) {
+                throw new Error(`Group "${groupName}" not found for contact ${contactId}`);
+            }
+            
+            const client = this.getClient(contactId);
+            const result = await client.sendMessage(group.id._serialized, message);
+            return result;
+        } catch (error) {
+            console.error(`Failed to send message to group ${groupName} from ${contactId}:`, error);
             throw error;
         }
     }

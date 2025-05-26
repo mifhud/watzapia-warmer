@@ -21,6 +21,11 @@ class MessageManager {
             const configPath = path.join(__dirname, '../../data/config.json');
             if (await fs.pathExists(configPath)) {
                 this.config = await fs.readJson(configPath);
+                // Add targetGroupName if it doesn't exist
+                if (!this.config.targetGroupName) {
+                    this.config.targetGroupName = "Watzapia";
+                    await fs.writeJson(configPath, this.config, { spaces: 2 });
+                }
             } else {
                 this.config = {
                     warmingInterval: 30, // minutes
@@ -31,7 +36,9 @@ class MessageManager {
                         start: '09:00',
                         end: '18:00'
                     },
-                    enableWorkingHoursOnly: true
+                    enableWorkingHoursOnly: true,
+                    targetGroupName: "Watzapia", // Default group name
+                    sendToGroup: true // Enable sending to group by default
                 };
             }
         } catch (error) {
@@ -45,7 +52,9 @@ class MessageManager {
                     start: '09:00',
                     end: '18:00'
                 },
-                enableWorkingHoursOnly: true
+                enableWorkingHoursOnly: true,
+                targetGroupName: "Watzapia", // Default group name
+                sendToGroup: true // Enable sending to group by default
             };
         }
     }
@@ -137,28 +146,48 @@ class MessageManager {
                 return;
             }
 
-
-
             // Get connected contacts
             const connectedContacts = this.whatsappManager.getConnectedContacts();
-            if (connectedContacts.length < 2) {
-                console.log('Not enough connected contacts for warming');
-                return;
+            
+            if (this.config.sendToGroup) {
+                // For group messaging, we only need one contact to send the message
+                if (connectedContacts.length < 1) {
+                    console.log('No connected contacts for warming');
+                    return;
+                }
+                
+                // Select random sender
+                const senderId = connectedContacts[Math.floor(Math.random() * connectedContacts.length)];
+                
+                // Check daily message limits
+                if (await this.hasReachedDailyLimit(senderId)) {
+                    console.log(`Contact ${senderId} has reached daily message limit`);
+                    return;
+                }
+                
+                // Send warming message to group
+                await this.sendWarmingMessageToGroup(senderId);
+            } else {
+                // Original direct messaging between contacts
+                if (connectedContacts.length < 2) {
+                    console.log('Not enough connected contacts for warming');
+                    return;
+                }
+                
+                // Select random sender
+                const senderId = connectedContacts[Math.floor(Math.random() * connectedContacts.length)];
+                const possibleRecipients = connectedContacts.filter(id => id !== senderId);
+                const recipientId = possibleRecipients[Math.floor(Math.random() * possibleRecipients.length)];
+                
+                // Check daily message limits
+                if (await this.hasReachedDailyLimit(senderId)) {
+                    console.log(`Contact ${senderId} has reached daily message limit`);
+                    return;
+                }
+                
+                // Send warming message to individual
+                await this.sendWarmingMessage(senderId, recipientId);
             }
-
-            // Select random sender
-            const senderId = connectedContacts[Math.floor(Math.random() * connectedContacts.length)];
-            const possibleRecipients = connectedContacts.filter(id => id !== senderId);
-            const recipientId = possibleRecipients[Math.floor(Math.random() * possibleRecipients.length)];
-
-            // Check daily message limits
-            if (await this.hasReachedDailyLimit(senderId)) {
-                console.log(`Contact ${senderId} has reached daily message limit`);
-                return;
-            }
-
-            // Send warming message
-            await this.sendWarmingMessage(senderId, recipientId);
 
         } catch (error) {
             console.error('Error in warming process:', error);
@@ -245,6 +274,64 @@ class MessageManager {
 
         } catch (error) {
             console.error('Error sending warming message:', error);
+            throw error;
+        }
+    }
+    
+    async sendWarmingMessageToGroup(senderId) {
+        try {
+            // Get sender contact information
+            const senderContact = await this.contactManager.getContact(senderId);
+            if (!senderContact) {
+                throw new Error('Sender contact not found');
+            }
+
+            // Get active templates
+            const templates = await this.templateManager.getActiveTemplates();
+            if (templates.length === 0) {
+                throw new Error('No active message templates available');
+            }
+
+            // Select random template
+            const template = templates[Math.floor(Math.random() * templates.length)];
+
+            // Generate message with variables - use group name instead of recipient name
+            const messageData = await this.templateManager.generateMessage(template.id, {
+                name: this.config.targetGroupName
+            });
+
+            // Find the group and send message
+            console.log(`Attempting to send message to group: ${this.config.targetGroupName}`);
+            const result = await this.whatsappManager.sendMessageToGroup(
+                senderId, 
+                this.config.targetGroupName, 
+                messageData.message
+            );
+
+            // Update contact statistics
+            await this.contactManager.updateContactMessageStats(senderId, 'sent');
+
+            // Log the warming message
+            console.log(`Warming message sent to group: ${senderContact.name} -> ${this.config.targetGroupName}`);
+            console.log(`Template: ${template.name}`);
+            console.log(`Message: ${messageData.message}`);
+
+            // Save to message history
+            await this.saveMessageToHistory({
+                type: 'group_warming',
+                senderId,
+                recipientId: 'group',
+                senderName: senderContact.name,
+                recipientName: this.config.targetGroupName,
+                message: messageData.message,
+                templateId: template.id,
+                templateName: template.name,
+                messageId: result.id._serialized,
+                sentAt: new Date().toISOString()
+            });
+
+        } catch (error) {
+            console.error('Error sending warming message to group:', error);
             throw error;
         }
     }
@@ -346,7 +433,7 @@ class MessageManager {
             const todayMessages = history.filter(msg => 
                 msg.senderId === contactId && 
                 msg.sentAt.startsWith(today) &&
-                (msg.type === 'warming' || msg.type === 'reply')
+                (msg.type === 'warming' || msg.type === 'reply' || msg.type === 'group_warming')
             );
 
             return todayMessages.length >= this.config.maxMessagesPerDay;
