@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Auto Warmer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-success">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fab fa-whatsapp me-2"></i>
+                WhatsApp Auto Warmer
+            </a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text" id="status-indicator">
+                    <i class="fas fa-circle text-danger me-1"></i>
+                    <span id="status-text">Stopped</span>
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Alert Messages -->
+        <div id="alert-container"></div>
+
+        <!-- Dashboard Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-white bg-primary">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">Total Contacts</h6>
+                                <h3 id="total-contacts">0</h3>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-users fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-success">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">Connected</h6>
+                                <h3 id="connected-contacts">0</h3>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-check-circle fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-warning">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">Pending Replies</h6>
+                                <h3 id="pending-replies">0</h3>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-clock fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-info">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">Messages Today</h6>
+                                <h3 id="messages-today">0</h3>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-envelope fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Control Panel -->
+        <div class="row">
+            <div class="col-md-8">
+                <!-- Contacts Management -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-address-book me-2"></i>
+                            Contacts Management
+                        </h5>
+                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addContactModal">
+                            <i class="fas fa-plus me-1"></i>Add Contact
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped" id="contacts-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Phone Number</th>
+                                        <th>Status</th>
+                                        <th>Last Connected</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="contacts-tbody">
+                                    <!-- Contacts will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Message Templates -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-comments me-2"></i>
+                            Message Templates
+                        </h5>
+                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addTemplateModal">
+                            <i class="fas fa-plus me-1"></i>Add Template
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="templates-container">
+                            <!-- Templates will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <!-- Auto Warmer Control -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-fire me-2"></i>
+                            Auto Warmer Control
+                        </h5>
+                    </div>
+                    <div class="card-body text-center">
+                        <div class="mb-3">
+                            <div class="warmer-status-indicator" id="warmer-status">
+                                <i class="fas fa-stop-circle fa-3x text-danger"></i>
+                                <p class="mt-2 mb-0">Stopped</p>
+                            </div>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-success btn-lg" id="start-warmer-btn">
+                                <i class="fas fa-play me-2"></i>Start Auto Warmer
+                            </button>
+                            <button class="btn btn-danger btn-lg" id="stop-warmer-btn" style="display: none;">
+                                <i class="fas fa-stop me-2"></i>Stop Auto Warmer
+                            </button>
+                        </div>
+                        <div class="mt-3" id="warmer-info" style="display: none;">
+                            <small class="text-muted">
+                                <div>Interval: <span id="warmer-interval">30</span> minutes</div>
+                                <div>Connected: <span id="warmer-connected">0</span> contacts</div>
+                                <div>Next message in: <span id="next-message-time">--</span></div>
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuration -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-cog me-2"></i>
+                            Configuration
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="config-form">
+                            <div class="mb-3">
+                                <label for="warming-interval" class="form-label">Warming Interval (minutes)</label>
+                                <input type="number" class="form-control" id="warming-interval" min="1" max="1440" value="30">
+                            </div>
+                            <div class="mb-3">
+                                <label for="max-messages" class="form-label">Max Messages/Day</label>
+                                <input type="number" class="form-control" id="max-messages" min="1" max="1000" value="50">
+                            </div>
+                            <div class="mb-3">
+                                <label for="reply-timeout" class="form-label">Reply Timeout (hours)</label>
+                                <input type="number" class="form-control" id="reply-timeout" min="1" max="168" value="24">
+                            </div>
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="working-hours-only" checked>
+                                    <label class="form-check-label" for="working-hours-only">
+                                        Working hours only
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-6">
+                                    <label for="work-start" class="form-label">Start Time</label>
+                                    <input type="time" class="form-control" id="work-start" value="09:00">
+                                </div>
+                                <div class="col-6">
+                                    <label for="work-end" class="form-label">End Time</label>
+                                    <input type="time" class="form-control" id="work-end" value="18:00">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-save me-1"></i>Save Configuration
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-history me-2"></i>
+                            Recent Activity
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="activity-log" style="max-height: 300px; overflow-y: auto;">
+                            <!-- Activity log will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Code Modal -->
+    <div class="modal fade" id="qrModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fab fa-whatsapp me-2"></i>
+                        WhatsApp QR Code
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <p>Scan this QR code with WhatsApp on your phone for <strong id="qr-contact-name"></strong>:</p>
+                    <div id="qr-code-container">
+                        <img id="qr-code-image" src="" alt="QR Code" class="img-fluid">
+                    </div>
+                    <p class="text-muted mt-3">
+                        <small>Open WhatsApp on your phone → Settings → Linked Devices → Link a Device</small>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Contact Modal -->
+    <div class="modal fade" id="addContactModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Contact</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="add-contact-form">
+                        <div class="mb-3">
+                            <label for="contact-name" class="form-label">Name *</label>
+                            <input type="text" class="form-control" id="contact-name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="contact-phone" class="form-label">Phone Number *</label>
+                            <input type="tel" class="form-control" id="contact-phone" placeholder="+62812345678" required>
+                            <div class="form-text">Include country code (e.g., +62 for Indonesia)</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="contact-email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="contact-email">
+                        </div>
+                        <div class="mb-3">
+                            <label for="contact-notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="contact-notes" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" form="add-contact-form" class="btn btn-primary">Add Contact</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Template Modal -->
+    <div class="modal fade" id="addTemplateModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Message Template</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="add-template-form">
+                        <div class="mb-3">
+                            <label for="template-name" class="form-label">Template Name *</label>
+                            <input type="text" class="form-control" id="template-name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="template-category" class="form-label">Category</label>
+                            <select class="form-select" id="template-category">
+                                <option value="greeting">Greeting</option>
+                                <option value="check-in">Check-in</option>
+                                <option value="casual">Casual</option>
+                                <option value="business">Business</option>
+                                <option value="general">General</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="template-messages" class="form-label">Message Variations *</label>
+                            <div id="template-messages-container">
+                                <div class="input-group mb-2">
+                                    <input type="text" class="form-control template-message" placeholder="Enter message variation..." required>
+                                    <button type="button" class="btn btn-outline-danger remove-message" disabled>
+                                        <i class="fas fa-minus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="add-message-variation">
+                                <i class="fas fa-plus me-1"></i>Add Variation
+                            </button>
+                            <div class="form-text">
+                                Use {name} for contact name, {timeOfDay} for time of day, {dayOfWeek} for day of week, etc.
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" form="add-template-form" class="btn btn-primary">Add Template</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

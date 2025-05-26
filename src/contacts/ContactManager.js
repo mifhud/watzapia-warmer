@@ -1,0 +1,314 @@
+const fs = require('fs-extra');
+const path = require('path');
+const { v4: uuidv4 } = require('uuid');
+
+class ContactManager {
+    constructor() {
+        this.contactsFile = path.join(__dirname, '../../data/contacts.json');
+    }
+
+    async getAllContacts() {
+        try {
+            if (!await fs.pathExists(this.contactsFile)) {
+                return [];
+            }
+            return await fs.readJson(this.contactsFile);
+        } catch (error) {
+            console.error('Error reading contacts file:', error);
+            return [];
+        }
+    }
+
+    async getContact(contactId) {
+        try {
+            const contacts = await this.getAllContacts();
+            return contacts.find(contact => contact.id === contactId);
+        } catch (error) {
+            console.error('Error getting contact:', error);
+            return null;
+        }
+    }
+
+    async addContact(contactData) {
+        try {
+            // Validate required fields
+            if (!contactData.name || !contactData.phoneNumber) {
+                throw new Error('Name and phone number are required');
+            }
+
+            // Validate phone number format (basic validation)
+            const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+            if (!phoneRegex.test(contactData.phoneNumber.replace(/\s+/g, ''))) {
+                throw new Error('Invalid phone number format');
+            }
+
+            const contacts = await this.getAllContacts();
+            
+            // Check if phone number already exists
+            const existingContact = contacts.find(contact => 
+                contact.phoneNumber === contactData.phoneNumber
+            );
+            if (existingContact) {
+                throw new Error('Contact with this phone number already exists');
+            }
+
+            // Create new contact
+            const newContact = {
+                id: uuidv4(),
+                name: contactData.name.trim(),
+                phoneNumber: contactData.phoneNumber.trim(),
+                email: contactData.email ? contactData.email.trim() : '',
+                notes: contactData.notes ? contactData.notes.trim() : '',
+                status: 'disconnected',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                lastConnected: null,
+                lastDisconnected: null,
+                messagesSent: 0,
+                messagesReceived: 0,
+                lastMessageSent: null,
+                lastMessageReceived: null,
+                isActive: true
+            };
+
+            contacts.push(newContact);
+            await this.saveContacts(contacts);
+
+            console.log(`Contact added: ${newContact.name} (${newContact.phoneNumber})`);
+            return newContact;
+        } catch (error) {
+            console.error('Error adding contact:', error);
+            throw error;
+        }
+    }
+
+    async updateContact(contactId, updateData) {
+        try {
+            const contacts = await this.getAllContacts();
+            const contactIndex = contacts.findIndex(contact => contact.id === contactId);
+            
+            if (contactIndex === -1) {
+                throw new Error('Contact not found');
+            }
+
+            // Validate phone number if it's being updated
+            if (updateData.phoneNumber) {
+                const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+                if (!phoneRegex.test(updateData.phoneNumber.replace(/\s+/g, ''))) {
+                    throw new Error('Invalid phone number format');
+                }
+
+                // Check if new phone number already exists (excluding current contact)
+                const existingContact = contacts.find(contact => 
+                    contact.phoneNumber === updateData.phoneNumber && contact.id !== contactId
+                );
+                if (existingContact) {
+                    throw new Error('Contact with this phone number already exists');
+                }
+            }
+
+            // Update contact
+            const updatedContact = {
+                ...contacts[contactIndex],
+                ...updateData,
+                updatedAt: new Date().toISOString()
+            };
+
+            // Ensure certain fields are properly formatted
+            if (updatedContact.name) {
+                updatedContact.name = updatedContact.name.trim();
+            }
+            if (updatedContact.phoneNumber) {
+                updatedContact.phoneNumber = updatedContact.phoneNumber.trim();
+            }
+            if (updatedContact.email) {
+                updatedContact.email = updatedContact.email.trim();
+            }
+
+            contacts[contactIndex] = updatedContact;
+            await this.saveContacts(contacts);
+
+            console.log(`Contact updated: ${updatedContact.name} (${updatedContact.phoneNumber})`);
+            return updatedContact;
+        } catch (error) {
+            console.error('Error updating contact:', error);
+            throw error;
+        }
+    }
+
+    async deleteContact(contactId) {
+        try {
+            const contacts = await this.getAllContacts();
+            const contactIndex = contacts.findIndex(contact => contact.id === contactId);
+            
+            if (contactIndex === -1) {
+                throw new Error('Contact not found');
+            }
+
+            const deletedContact = contacts[contactIndex];
+            contacts.splice(contactIndex, 1);
+            await this.saveContacts(contacts);
+
+            console.log(`Contact deleted: ${deletedContact.name} (${deletedContact.phoneNumber})`);
+            return true;
+        } catch (error) {
+            console.error('Error deleting contact:', error);
+            throw error;
+        }
+    }
+
+    async getActiveContacts() {
+        try {
+            const contacts = await this.getAllContacts();
+            return contacts.filter(contact => contact.isActive);
+        } catch (error) {
+            console.error('Error getting active contacts:', error);
+            return [];
+        }
+    }
+
+    async getConnectedContacts() {
+        try {
+            const contacts = await this.getAllContacts();
+            return contacts.filter(contact => contact.status === 'connected');
+        } catch (error) {
+            console.error('Error getting connected contacts:', error);
+            return [];
+        }
+    }
+
+    async updateContactMessageStats(contactId, type, messageData = null) {
+        try {
+            const contact = await this.getContact(contactId);
+            if (!contact) {
+                throw new Error('Contact not found');
+            }
+
+            const updateData = {};
+            
+            if (type === 'sent') {
+                updateData.messagesSent = (contact.messagesSent || 0) + 1;
+                updateData.lastMessageSent = new Date().toISOString();
+            } else if (type === 'received') {
+                updateData.messagesReceived = (contact.messagesReceived || 0) + 1;
+                updateData.lastMessageReceived = new Date().toISOString();
+            }
+
+            await this.updateContact(contactId, updateData);
+        } catch (error) {
+            console.error('Error updating contact message stats:', error);
+        }
+    }
+
+    async getContactByPhoneNumber(phoneNumber) {
+        try {
+            const contacts = await this.getAllContacts();
+            return contacts.find(contact => contact.phoneNumber === phoneNumber);
+        } catch (error) {
+            console.error('Error getting contact by phone number:', error);
+            return null;
+        }
+    }
+
+    async saveContacts(contacts) {
+        try {
+            await fs.ensureDir(path.dirname(this.contactsFile));
+            await fs.writeJson(this.contactsFile, contacts, { spaces: 2 });
+        } catch (error) {
+            console.error('Error saving contacts file:', error);
+            throw error;
+        }
+    }
+
+    async exportContacts() {
+        try {
+            const contacts = await this.getAllContacts();
+            const exportData = {
+                exportDate: new Date().toISOString(),
+                totalContacts: contacts.length,
+                contacts: contacts
+            };
+            return exportData;
+        } catch (error) {
+            console.error('Error exporting contacts:', error);
+            throw error;
+        }
+    }
+
+    async importContacts(importData) {
+        try {
+            if (!importData.contacts || !Array.isArray(importData.contacts)) {
+                throw new Error('Invalid import data format');
+            }
+
+            const existingContacts = await this.getAllContacts();
+            const importedContacts = [];
+            const skippedContacts = [];
+
+            for (const contactData of importData.contacts) {
+                try {
+                    // Check if contact already exists
+                    const existingContact = existingContacts.find(contact => 
+                        contact.phoneNumber === contactData.phoneNumber
+                    );
+
+                    if (existingContact) {
+                        skippedContacts.push({
+                            phoneNumber: contactData.phoneNumber,
+                            reason: 'Phone number already exists'
+                        });
+                        continue;
+                    }
+
+                    // Add contact
+                    const newContact = await this.addContact(contactData);
+                    importedContacts.push(newContact);
+                } catch (error) {
+                    skippedContacts.push({
+                        phoneNumber: contactData.phoneNumber,
+                        reason: error.message
+                    });
+                }
+            }
+
+            return {
+                imported: importedContacts.length,
+                skipped: skippedContacts.length,
+                importedContacts,
+                skippedContacts
+            };
+        } catch (error) {
+            console.error('Error importing contacts:', error);
+            throw error;
+        }
+    }
+
+    async getContactStats() {
+        try {
+            const contacts = await this.getAllContacts();
+            
+            const stats = {
+                total: contacts.length,
+                active: contacts.filter(c => c.isActive).length,
+                connected: contacts.filter(c => c.status === 'connected').length,
+                disconnected: contacts.filter(c => c.status === 'disconnected').length,
+                totalMessagesSent: contacts.reduce((sum, c) => sum + (c.messagesSent || 0), 0),
+                totalMessagesReceived: contacts.reduce((sum, c) => sum + (c.messagesReceived || 0), 0)
+            };
+
+            return stats;
+        } catch (error) {
+            console.error('Error getting contact stats:', error);
+            return {
+                total: 0,
+                active: 0,
+                connected: 0,
+                disconnected: 0,
+                totalMessagesSent: 0,
+                totalMessagesReceived: 0
+            };
+        }
+    }
+}
+
+module.exports = ContactManager;

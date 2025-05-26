@@ -1,0 +1,23 @@
+{
+  "name": "whatsapp-auto-warmer",
+  "version": "1.0.0",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["whatsapp", "automation", "messaging", "warmer"],
+  "author": "",
+  "license": "ISC",
+  "description": "WhatsApp Auto Warmer - Automated WhatsApp messaging system for contact warming",
+  "dependencies": {
+    "express": "^5.1.0",
+    "fs-extra": "^11.3.0",
+    "moment-timezone": "^0.6.0",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.1",
+    "uuid": "^11.1.0",
+    "whatsapp-web.js": "^1.28.0"
+  }
+}

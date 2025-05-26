@@ -1,0 +1,326 @@
+const fs = require('fs-extra');
+const path = require('path');
+
+class Config {
+    constructor() {
+        this.configFile = path.join(__dirname, '../../data/config.json');
+        this.defaultConfig = {
+            // Warming settings
+            warmingInterval: 30, // minutes
+            timezone: 'Asia/Jakarta',
+            maxMessagesPerDay: 50,
+            replyTimeout: 24, // hours
+            
+            // Working hours
+            workingHours: {
+                start: '09:00',
+                end: '18:00'
+            },
+            enableWorkingHoursOnly: true,
+            
+            // Message settings
+            messageVariationEnabled: true,
+            dynamicDataEnabled: true,
+            
+            // Connection settings
+            autoReconnect: true,
+            reconnectDelay: 5, // minutes
+            maxReconnectAttempts: 3,
+            
+            // Logging settings
+            enableDetailedLogging: true,
+            logRetentionDays: 30,
+            
+            // Security settings
+            enableRateLimiting: true,
+            maxRequestsPerMinute: 60,
+            
+            // UI settings
+            theme: 'light',
+            autoRefresh: true,
+            refreshInterval: 30, // seconds
+            
+            // Notification settings
+            enableNotifications: true,
+            notifyOnConnection: true,
+            notifyOnDisconnection: true,
+            notifyOnMessage: false,
+            notifyOnError: true,
+            
+            // Advanced settings
+            enableSpamPrevention: true,
+            minMessageInterval: 5, // minutes
+            maxConsecutiveMessages: 3,
+            cooldownPeriod: 60, // minutes
+            
+            // Export/Import settings
+            enableAutoBackup: true,
+            backupInterval: 24, // hours
+            maxBackupFiles: 7
+        };
+    }
+
+    async getConfig() {
+        try {
+            if (!await fs.pathExists(this.configFile)) {
+                await this.saveConfig(this.defaultConfig);
+                return this.defaultConfig;
+            }
+            
+            const config = await fs.readJson(this.configFile);
+            
+            // Merge with default config to ensure all properties exist
+            const mergedConfig = { ...this.defaultConfig, ...config };
+            
+            // Save merged config to update any missing properties
+            if (Object.keys(mergedConfig).length !== Object.keys(config).length) {
+                await this.saveConfig(mergedConfig);
+            }
+            
+            return mergedConfig;
+        } catch (error) {
+            console.error('Error reading config file:', error);
+            return this.defaultConfig;
+        }
+    }
+
+    async updateConfig(updates) {
+        try {
+            const currentConfig = await this.getConfig();
+            
+            // Validate updates
+            const validatedUpdates = this.validateConfigUpdates(updates);
+            
+            const newConfig = { ...currentConfig, ...validatedUpdates };
+            
+            await this.saveConfig(newConfig);
+            
+            console.log('Configuration updated successfully');
+            return newConfig;
+        } catch (error) {
+            console.error('Error updating config:', error);
+            throw error;
+        }
+    }
+
+    validateConfigUpdates(updates) {
+        const validated = {};
+        
+        // Validate warming interval
+        if (updates.warmingInterval !== undefined) {
+            const interval = parseInt(updates.warmingInterval);
+            if (isNaN(interval) || interval < 1 || interval > 1440) {
+                throw new Error('Warming interval must be between 1 and 1440 minutes');
+            }
+            validated.warmingInterval = interval;
+        }
+        
+        // Validate timezone
+        if (updates.timezone !== undefined) {
+            if (typeof updates.timezone !== 'string' || updates.timezone.trim() === '') {
+                throw new Error('Timezone must be a valid string');
+            }
+            validated.timezone = updates.timezone.trim();
+        }
+        
+        // Validate max messages per day
+        if (updates.maxMessagesPerDay !== undefined) {
+            const maxMessages = parseInt(updates.maxMessagesPerDay);
+            if (isNaN(maxMessages) || maxMessages < 1 || maxMessages > 1000) {
+                throw new Error('Max messages per day must be between 1 and 1000');
+            }
+            validated.maxMessagesPerDay = maxMessages;
+        }
+        
+        // Validate reply timeout
+        if (updates.replyTimeout !== undefined) {
+            const timeout = parseInt(updates.replyTimeout);
+            if (isNaN(timeout) || timeout < 1 || timeout > 168) {
+                throw new Error('Reply timeout must be between 1 and 168 hours');
+            }
+            validated.replyTimeout = timeout;
+        }
+        
+        // Validate working hours
+        if (updates.workingHours !== undefined) {
+            if (typeof updates.workingHours !== 'object') {
+                throw new Error('Working hours must be an object');
+            }
+            
+            const { start, end } = updates.workingHours;
+            if (start && !this.isValidTime(start)) {
+                throw new Error('Working hours start time must be in HH:MM format');
+            }
+            if (end && !this.isValidTime(end)) {
+                throw new Error('Working hours end time must be in HH:MM format');
+            }
+            
+            validated.workingHours = updates.workingHours;
+        }
+        
+        // Validate boolean fields
+        const booleanFields = [
+            'enableWorkingHoursOnly',
+            'messageVariationEnabled',
+            'dynamicDataEnabled',
+            'autoReconnect',
+            'enableDetailedLogging',
+            'enableRateLimiting',
+            'autoRefresh',
+            'enableNotifications',
+            'notifyOnConnection',
+            'notifyOnDisconnection',
+            'notifyOnMessage',
+            'notifyOnError',
+            'enableSpamPrevention',
+            'enableAutoBackup'
+        ];
+        
+        booleanFields.forEach(field => {
+            if (updates[field] !== undefined) {
+                validated[field] = Boolean(updates[field]);
+            }
+        });
+        
+        // Validate numeric fields with ranges
+        const numericFields = {
+            reconnectDelay: { min: 1, max: 60 },
+            maxReconnectAttempts: { min: 1, max: 10 },
+            logRetentionDays: { min: 1, max: 365 },
+            maxRequestsPerMinute: { min: 1, max: 1000 },
+            refreshInterval: { min: 5, max: 300 },
+            minMessageInterval: { min: 1, max: 60 },
+            maxConsecutiveMessages: { min: 1, max: 10 },
+            cooldownPeriod: { min: 10, max: 1440 },
+            backupInterval: { min: 1, max: 168 },
+            maxBackupFiles: { min: 1, max: 30 }
+        };
+        
+        Object.entries(numericFields).forEach(([field, range]) => {
+            if (updates[field] !== undefined) {
+                const value = parseInt(updates[field]);
+                if (isNaN(value) || value < range.min || value > range.max) {
+                    throw new Error(`${field} must be between ${range.min} and ${range.max}`);
+                }
+                validated[field] = value;
+            }
+        });
+        
+        // Validate theme
+        if (updates.theme !== undefined) {
+            const validThemes = ['light', 'dark'];
+            if (!validThemes.includes(updates.theme)) {
+                throw new Error('Theme must be either "light" or "dark"');
+            }
+            validated.theme = updates.theme;
+        }
+        
+        return validated;
+    }
+
+    isValidTime(timeString) {
+        const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+        return timeRegex.test(timeString);
+    }
+
+    async saveConfig(config) {
+        try {
+            await fs.ensureDir(path.dirname(this.configFile));
+            await fs.writeJson(this.configFile, config, { spaces: 2 });
+        } catch (error) {
+            console.error('Error saving config file:', error);
+            throw error;
+        }
+    }
+
+    async resetConfig() {
+        try {
+            await this.saveConfig(this.defaultConfig);
+            console.log('Configuration reset to defaults');
+            return this.defaultConfig;
+        } catch (error) {
+            console.error('Error resetting config:', error);
+            throw error;
+        }
+    }
+
+    async exportConfig() {
+        try {
+            const config = await this.getConfig();
+            return {
+                exportDate: new Date().toISOString(),
+                version: '1.0.0',
+                config: config
+            };
+        } catch (error) {
+            console.error('Error exporting config:', error);
+            throw error;
+        }
+    }
+
+    async importConfig(importData) {
+        try {
+            if (!importData.config || typeof importData.config !== 'object') {
+                throw new Error('Invalid import data format');
+            }
+            
+            // Validate the imported config
+            const validatedConfig = this.validateConfigUpdates(importData.config);
+            
+            // Merge with current config
+            const currentConfig = await this.getConfig();
+            const newConfig = { ...currentConfig, ...validatedConfig };
+            
+            await this.saveConfig(newConfig);
+            
+            console.log('Configuration imported successfully');
+            return newConfig;
+        } catch (error) {
+            console.error('Error importing config:', error);
+            throw error;
+        }
+    }
+
+    async getConfigSchema() {
+        return {
+            warmingInterval: {
+                type: 'number',
+                min: 1,
+                max: 1440,
+                unit: 'minutes',
+                description: 'Interval between warming messages'
+            },
+            timezone: {
+                type: 'string',
+                description: 'Timezone for scheduling (e.g., Asia/Jakarta)'
+            },
+            maxMessagesPerDay: {
+                type: 'number',
+                min: 1,
+                max: 1000,
+                description: 'Maximum messages per contact per day'
+            },
+            replyTimeout: {
+                type: 'number',
+                min: 1,
+                max: 168,
+                unit: 'hours',
+                description: 'Time to wait for reply before sending next message'
+            },
+            workingHours: {
+                type: 'object',
+                properties: {
+                    start: { type: 'string', format: 'HH:MM' },
+                    end: { type: 'string', format: 'HH:MM' }
+                },
+                description: 'Working hours for sending messages'
+            },
+            enableWorkingHoursOnly: {
+                type: 'boolean',
+                description: 'Only send messages during working hours'
+            }
+        };
+    }
+}
+
+module.exports = Config;
