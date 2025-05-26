@@ -75,6 +75,7 @@ class WhatsAppAutoWarmer {
         });
 
         this.socket.on('qr_code', (data) => {
+            console.log("Consumed QR code event:", data);
             this.showQRCode(data);
         });
 
@@ -101,7 +102,7 @@ class WhatsAppAutoWarmer {
                 this.loadContacts(),
                 this.loadTemplates(),
                 this.loadConfiguration(),
-                this.loadWarmerStatus()
+                // this.loadWarmerStatus()
             ]);
             this.updateDashboard();
         } catch (error) {
@@ -740,7 +741,7 @@ class WhatsAppAutoWarmer {
     startPeriodicUpdates() {
         // Update dashboard every 30 seconds
         setInterval(() => {
-            this.loadWarmerStatus();
+            // this.loadWarmerStatus();
             this.updateDashboard();
         }, 30000);
     }

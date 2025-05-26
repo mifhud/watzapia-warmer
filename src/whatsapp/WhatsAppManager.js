@@ -26,39 +26,105 @@ class WhatsAppManager {
 
             console.log(`Connecting WhatsApp for contact: ${contact.name} (${contact.phoneNumber})`);
 
-            // Create session directory for this contact
-            const sessionPath = path.join(__dirname, '../../data/sessions', contactId);
-            await fs.ensureDir(sessionPath);
-
             // Create WhatsApp client with LocalAuth
             const client = new Client({
                 authStrategy: new LocalAuth({
                     clientId: contactId,
-                    dataPath: sessionPath
                 }),
                 puppeteer: {
                     headless: true,
-                    args: [
-                        '--no-sandbox',
-                        '--disable-setuid-sandbox',
-                        '--disable-dev-shm-usage',
-                        '--disable-accelerated-2d-canvas',
-                        '--no-first-run',
-                        '--no-zygote',
-                        '--single-process',
-                        '--disable-gpu'
-                    ]
                 }
             });
 
             this.clients.set(contactId, client);
             this.updateConnectionStatus(contactId, 'connecting');
 
-            // Set up event handlers
-            this.setupClientEventHandlers(client, contactId, contact);
+            client.on('qr', async (qr) => {
+                console.log(`QR Code generated for ${contact.name}`);
+                try {
+                    const qrCodeDataURL = await qrcode.toDataURL(qr);
+                    this.qrCodes.set(contactId, qrCodeDataURL);
+                    this.updateConnectionStatus(contactId, 'qr_ready');
 
-            // Initialize the client
+                    // Emit QR code to frontend
+                    this.io.emit('qr_code', {
+                        contactId,
+                        qrCode: qrCodeDataURL,
+                        contactName: contact.name
+                    });
+                } catch (error) {
+                    console.error('Failed to generate QR code:', error);
+                }
+            });
+
+            client.on('ready', async () => {
+                console.log(`WhatsApp client ready for ${contact.name}`);
+                this.updateConnectionStatus(contactId, 'connected');
+                this.qrCodes.delete(contactId);
+
+                // Update contact status in database
+                await this.contactManager.updateContact(contactId, {
+                    status: 'connected',
+                    lastConnected: new Date().toISOString()
+                });
+
+                this.io.emit('connection_status', {
+                    contactId,
+                    status: 'connected',
+                    contactName: contact.name
+                });
+            });
+
+            client.on('authenticated', () => {
+                console.log(`WhatsApp authenticated for ${contact.name}`);
+                this.updateConnectionStatus(contactId, 'authenticated');
+            });
+
+            client.on('auth_failure', (msg) => {
+                console.error(`Authentication failed for ${contact.name}:`, msg);
+                this.updateConnectionStatus(contactId, 'auth_failed', msg);
+                this.clients.delete(contactId);
+            });
+
+            client.on('disconnected', async (reason) => {
+                console.log(`WhatsApp disconnected for ${contact.name}:`, reason);
+                this.updateConnectionStatus(contactId, 'disconnected', reason);
+                this.clients.delete(contactId);
+                this.qrCodes.delete(contactId);
+
+                // Update contact status in database
+                await this.contactManager.updateContact(contactId, {
+                    status: 'disconnected',
+                    lastDisconnected: new Date().toISOString()
+                });
+
+                this.io.emit('connection_status', {
+                    contactId,
+                    status: 'disconnected',
+                    contactName: contact.name,
+                    reason
+                });
+            });
+
+            client.on('message', async (message) => {
+                // Handle incoming messages for reply tracking
+                this.handleIncomingMessage(contactId, message);
+            });
+
+            client.on('message_create', async (message) => {
+                // Handle outgoing messages
+                if (message.fromMe) {
+                    this.handleOutgoingMessage(contactId, message);
+                }
+            });
+
             await client.initialize();
+
+            // // Set up event handlers
+            // this.setupClientEventHandlers(client, contactId, contact);
+
+            // // Initialize the client
+            // await client.initialize();
 
         } catch (error) {
             console.error(`Failed to connect contact ${contactId}:`, error);
@@ -75,7 +141,7 @@ class WhatsAppManager {
                 const qrCodeDataURL = await qrcode.toDataURL(qr);
                 this.qrCodes.set(contactId, qrCodeDataURL);
                 this.updateConnectionStatus(contactId, 'qr_ready');
-                
+
                 // Emit QR code to frontend
                 this.io.emit('qr_code', {
                     contactId,
@@ -91,9 +157,9 @@ class WhatsAppManager {
             console.log(`WhatsApp client ready for ${contact.name}`);
             this.updateConnectionStatus(contactId, 'connected');
             this.qrCodes.delete(contactId);
-            
+
             // Update contact status in database
-            await this.contactManager.updateContact(contactId, { 
+            await this.contactManager.updateContact(contactId, {
                 status: 'connected',
                 lastConnected: new Date().toISOString()
             });
@@ -121,9 +187,9 @@ class WhatsAppManager {
             this.updateConnectionStatus(contactId, 'disconnected', reason);
             this.clients.delete(contactId);
             this.qrCodes.delete(contactId);
-            
+
             // Update contact status in database
-            await this.contactManager.updateContact(contactId, { 
+            await this.contactManager.updateContact(contactId, {
                 status: 'disconnected',
                 lastDisconnected: new Date().toISOString()
             });
@@ -199,18 +265,18 @@ class WhatsAppManager {
         try {
             const historyPath = path.join(__dirname, '../../data/message-history.json');
             let history = [];
-            
+
             if (await fs.pathExists(historyPath)) {
                 history = await fs.readJson(historyPath);
             }
-            
+
             history.push(messageData);
-            
+
             // Keep only last 10000 messages to prevent file from growing too large
             if (history.length > 10000) {
                 history = history.slice(-10000);
             }
-            
+
             await fs.writeJson(historyPath, history, { spaces: 2 });
         } catch (error) {
             console.error('Error saving message to history:', error);
@@ -225,7 +291,7 @@ class WhatsAppManager {
             }
 
             console.log(`Disconnecting WhatsApp for contact: ${contactId}`);
-            
+
             await client.destroy();
             this.clients.delete(contactId);
             this.qrCodes.delete(contactId);
@@ -234,7 +300,7 @@ class WhatsAppManager {
             // Update contact status in database
             const contact = await this.contactManager.getContact(contactId);
             if (contact) {
-                await this.contactManager.updateContact(contactId, { 
+                await this.contactManager.updateContact(contactId, {
                     status: 'disconnected',
                     lastDisconnected: new Date().toISOString()
                 });
@@ -249,11 +315,11 @@ class WhatsAppManager {
     async disconnectAll() {
         console.log('Disconnecting all WhatsApp clients...');
         const disconnectPromises = [];
-        
+
         for (const contactId of this.clients.keys()) {
             disconnectPromises.push(this.disconnectContact(contactId));
         }
-        
+
         await Promise.allSettled(disconnectPromises);
     }
 
