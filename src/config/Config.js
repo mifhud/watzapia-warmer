@@ -6,7 +6,8 @@ class Config {
         this.configFile = path.join(__dirname, '../../data/config.json');
         this.defaultConfig = {
             // Warming settings
-            warmingInterval: 30, // minutes
+            minWarmingInterval: 15, // minutes
+            maxWarmingInterval: 45, // minutes
             timezone: 'Asia/Jakarta',
             maxMessagesPerDay: 50,
 
@@ -108,14 +109,34 @@ class Config {
     validateConfigUpdates(updates) {
         const validated = {};
         
-        // Validate warming interval
-        if (updates.warmingInterval !== undefined) {
-            const interval = parseInt(updates.warmingInterval);
-            if (isNaN(interval) || interval < 1 || interval > 1440) {
-                throw new Error('Warming interval must be between 1 and 1440 minutes');
+        // Validate min warming interval
+        if (updates.minWarmingInterval !== undefined) {
+            const minInterval = parseInt(updates.minWarmingInterval);
+            if (isNaN(minInterval) || minInterval < 1 || minInterval > 1440) {
+                throw new Error('Min warming interval must be between 1 and 1440 minutes');
             }
-            validated.warmingInterval = interval;
+            validated.minWarmingInterval = minInterval;
         }
+        
+        // Validate max warming interval
+        if (updates.maxWarmingInterval !== undefined) {
+            const maxInterval = parseInt(updates.maxWarmingInterval);
+            if (isNaN(maxInterval) || maxInterval < 1 || maxInterval > 1440) {
+                throw new Error('Max warming interval must be between 1 and 1440 minutes');
+            }
+            validated.maxWarmingInterval = maxInterval;
+        }
+        
+        // Validate min and max warming interval relationship
+        if (updates.minWarmingInterval !== undefined && updates.maxWarmingInterval !== undefined) {
+            const minInterval = parseInt(updates.minWarmingInterval);
+            const maxInterval = parseInt(updates.maxWarmingInterval);
+            if (minInterval > maxInterval) {
+                throw new Error('Min warming interval cannot be greater than max warming interval');
+            }
+        }
+        
+
         
         // Validate timezone
         if (updates.timezone !== undefined) {
@@ -285,12 +306,19 @@ class Config {
 
     async getConfigSchema() {
         return {
-            warmingInterval: {
+            minWarmingInterval: {
                 type: 'number',
                 min: 1,
                 max: 1440,
                 unit: 'minutes',
-                description: 'Interval between warming messages'
+                description: 'Minimum interval between warming messages'
+            },
+            maxWarmingInterval: {
+                type: 'number',
+                min: 1,
+                max: 1440,
+                unit: 'minutes',
+                description: 'Maximum interval between warming messages'
             },
             timezone: {
                 type: 'string',

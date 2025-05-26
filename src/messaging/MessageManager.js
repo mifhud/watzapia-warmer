@@ -32,7 +32,8 @@ class MessageManager {
                 }
             } else {
                 this.config = {
-                    warmingInterval: 30, // minutes
+                    minWarmingInterval: 15, // minutes
+                    maxWarmingInterval: 45, // minutes
                     timezone: 'Asia/Jakarta',
                     maxMessagesPerDay: 50,
                     workingHours: {
@@ -47,7 +48,8 @@ class MessageManager {
         } catch (error) {
             console.error('Error loading config:', error);
             this.config = {
-                warmingInterval: 30,
+                minWarmingInterval: 15, // minutes
+                maxWarmingInterval: 45, // minutes
                 timezone: 'Asia/Jakarta',
                 maxMessagesPerDay: 50,
                 workingHours: {
@@ -80,13 +82,18 @@ class MessageManager {
             // Start the warming process
             this.scheduleNextMessage();
             
+            // Get min and max warming intervals
+            const minInterval = this.config.minWarmingInterval || 15;
+            const maxInterval = this.config.maxWarmingInterval || 45;
+            
             console.log(`Auto warmer started with ${connectedContacts.length} connected contacts`);
-            console.log(`Warming interval: ${this.config.warmingInterval} minutes`);
+            console.log(`Warming interval range: ${minInterval}-${maxInterval} minutes`);
             
             return {
                 success: true,
                 connectedContacts: connectedContacts.length,
-                interval: this.config.warmingInterval
+                minInterval: minInterval,
+                maxInterval: maxInterval
             };
         } catch (error) {
             console.error('Error starting auto warmer:', error);
@@ -126,7 +133,16 @@ class MessageManager {
             return;
         }
 
-        const intervalMs = this.config.warmingInterval * 60 * 1000;
+        // Get min and max warming intervals
+        const minInterval = this.config.minWarmingInterval || 15;
+        const maxInterval = this.config.maxWarmingInterval || 45;
+        
+        // Generate a random interval between min and max (inclusive)
+        const randomInterval = Math.floor(Math.random() * (maxInterval - minInterval + 1)) + minInterval;
+        
+        console.log(`Using random warming interval: ${randomInterval} minutes (range: ${minInterval}-${maxInterval})`);
+        
+        const intervalMs = randomInterval * 60 * 1000;
         
         this.warmerInterval = setTimeout(async () => {
             try {
@@ -500,7 +516,7 @@ class MessageManager {
             connectedContacts: connectedContacts.length,
             queuedMessages: this.messageQueue.length,
             config: this.config,
-            nextMessageIn: this.warmerInterval ? this.config.warmingInterval : null,
+            nextMessageIn: this.warmerInterval ? Math.floor(Math.random() * (this.config.maxWarmingInterval - this.config.minWarmingInterval + 1)) + this.config.minWarmingInterval : null,
             withinWorkingHours: this.isWithinWorkingHours()
         };
     }

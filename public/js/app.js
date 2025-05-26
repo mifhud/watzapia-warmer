@@ -246,7 +246,8 @@ class WhatsAppAutoWarmer {
     }
 
     populateConfigForm() {
-        document.getElementById('warming-interval').value = this.config.warmingInterval || 30;
+        document.getElementById('min-warming-interval').value = this.config.minWarmingInterval || 15;
+        document.getElementById('max-warming-interval').value = this.config.maxWarmingInterval || 45;
         document.getElementById('max-messages').value = this.config.maxMessagesPerDay || 50;
         document.getElementById('targetGroupName1').value = this.config.targetGroupName1 || '';
         document.getElementById('working-hours-only').checked = this.config.enableWorkingHoursOnly || false;
@@ -287,7 +288,8 @@ class WhatsAppAutoWarmer {
             stopBtn.style.display = 'block';
             warmerInfo.style.display = 'block';
 
-            document.getElementById('warmer-interval').textContent = this.warmerStatus.config?.warmingInterval || 30;
+            document.getElementById('warmer-min-interval').textContent = this.warmerStatus.minInterval || this.warmerStatus.config?.minWarmingInterval || 15;
+            document.getElementById('warmer-max-interval').textContent = this.warmerStatus.maxInterval || this.warmerStatus.config?.maxWarmingInterval || 45;
             document.getElementById('warmer-connected').textContent = this.warmerStatus.connectedContacts || 0;
         } else {
             statusIndicator.innerHTML = '<i class="fas fa-circle text-danger me-1"></i>';
@@ -599,7 +601,8 @@ class WhatsAppAutoWarmer {
     async updateConfiguration() {
         try {
             const formData = {
-                warmingInterval: parseInt(document.getElementById('warming-interval').value),
+                minWarmingInterval: parseInt(document.getElementById('min-warming-interval').value),
+                maxWarmingInterval: parseInt(document.getElementById('max-warming-interval').value),
                 maxMessagesPerDay: parseInt(document.getElementById('max-messages').value),
                 targetGroupName1: document.getElementById('targetGroupName1').value,
                 enableWorkingHoursOnly: document.getElementById('working-hours-only').checked,

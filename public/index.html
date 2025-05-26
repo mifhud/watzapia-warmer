@@ -142,7 +142,7 @@
                         </div>
                         <div class="mt-3" id="warmer-info" style="display: none;">
                             <small class="text-muted">
-                                <div>Interval: <span id="warmer-interval">30</span> minutes</div>
+                                <div>Interval range: <span id="warmer-min-interval">15</span>-<span id="warmer-max-interval">45</span> minutes</div>
                                 <div>Connected: <span id="warmer-connected">0</span> contacts</div>
                                 <div>Next message in: <span id="next-message-time">--</span></div>
                             </small>
@@ -161,8 +161,12 @@
                     <div class="card-body">
                         <form id="config-form">
                             <div class="mb-3">
-                                <label for="warming-interval" class="form-label">Warming Interval (minutes)</label>
-                                <input type="number" class="form-control" id="warming-interval" min="1" max="1440" value="30">
+                                <label for="min-warming-interval" class="form-label">Min Warming Interval (minutes)</label>
+                                <input type="number" class="form-control" id="min-warming-interval" min="1" max="1440" value="15">
+                            </div>
+                            <div class="mb-3">
+                                <label for="max-warming-interval" class="form-label">Max Warming Interval (minutes)</label>
+                                <input type="number" class="form-control" id="max-warming-interval" min="1" max="1440" value="45">
                             </div>
                             <div class="mb-3">
                                 <label for="max-messages" class="form-label">Max Messages/Day</label>

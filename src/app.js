@@ -184,7 +184,8 @@ class WhatsAppAutoWarmer {
             'contacts.json': [],
             'message-templates.json': [],
             'config.json': {
-                warmingInterval: 30, // minutes
+                minWarmingInterval: 15, // minutes
+                maxWarmingInterval: 45, // minutes
                 timezone: 'Asia/Jakarta',
                 maxMessagesPerDay: 50
             },
