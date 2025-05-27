@@ -578,19 +578,25 @@ class WhatsAppAutoWarmer {
                 return;
             }
 
+            // Update UI immediately to show the stop button
+            this.warmerStatus.isActive = true;
+            this.updateWarmerUI();
+
             const response = await fetch('/api/warmer/start', {
                 method: 'POST'
             });
 
             if (!response.ok) {
+                // Revert UI changes if the API call fails
+                this.warmerStatus.isActive = false;
+                this.updateWarmerUI();
+                
                 const error = await response.json();
                 throw new Error(error.error || 'Failed to start auto warmer');
             }
 
             const result = await response.json();
-            this.warmerStatus.isActive = true;
-            this.updateWarmerUI();
-
+            
             this.showAlert('Auto warmer started successfully', 'success');
             this.addActivityLog('Auto warmer started', 'success');
         } catch (error) {
@@ -606,16 +612,7 @@ class WhatsAppAutoWarmer {
                 this.warmerStatus = { isActive: false };
             }
             
-            const response = await fetch('/api/warmer/stop', {
-                method: 'POST'
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Failed to stop auto warmer');
-            }
-
-            const result = await response.json();
+            // Update UI immediately to show the start button
             this.warmerStatus.isActive = false;
             
             // Update UI safely
@@ -624,6 +621,21 @@ class WhatsAppAutoWarmer {
             } catch (uiError) {
                 console.error('Error updating UI after stopping warmer:', uiError);
             }
+            
+            const response = await fetch('/api/warmer/stop', {
+                method: 'POST'
+            });
+
+            if (!response.ok) {
+                // Revert UI changes if the API call fails
+                this.warmerStatus.isActive = true;
+                this.updateWarmerUI();
+                
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to stop auto warmer');
+            }
+
+            const result = await response.json();
 
             this.showAlert('Auto warmer stopped successfully', 'success');
             this.addActivityLog('Auto warmer stopped', 'warning');
