@@ -46,6 +46,12 @@ class MessageManager {
                     this.config.targetGroupName2 = "";
                     await fs.writeJson(configPath, this.config, { spaces: 2 });
                 }
+                
+                // Add tulilutCookie if it doesn't exist
+                if (this.config.tulilutCookie === undefined) {
+                    this.config.tulilutCookie = "";
+                    await fs.writeJson(configPath, this.config, { spaces: 2 });
+                }
             } else {
                 this.config = {
                     minWarmingInterval: 15, // seconds

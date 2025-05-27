@@ -592,7 +592,7 @@ class WhatsAppAutoWarmer {
     }
 
     // Auto Warmer Control Methods
-    async startAutoWarmer() {
+    async   startAutoWarmer() {
         try {
             const connectedContacts = this.contacts.filter(c => c.status === 'connected').length;
 

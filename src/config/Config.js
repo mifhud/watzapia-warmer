@@ -63,7 +63,10 @@ class Config {
             
             // Group settings
             targetGroupName1: "Watzapia",
-            targetGroupName2: "Watzapia 2"
+            targetGroupName2: "Watzapia 2",
+            
+            // Integration settings
+            tulilutCookie: "" // Cookie for tulilut.xyz
         };
     }
 
@@ -266,6 +269,14 @@ class Config {
                 throw new Error('Target Group Name 2 must be a string');
             }
             validated.targetGroupName2 = updates.targetGroupName2;
+        }
+        
+        // Validate tulilutCookie
+        if (updates.tulilutCookie !== undefined) {
+            if (typeof updates.tulilutCookie !== 'string') {
+                throw new Error('Tulilut Cookie must be a string');
+            }
+            validated.tulilutCookie = updates.tulilutCookie;
         }
         
         return validated;
