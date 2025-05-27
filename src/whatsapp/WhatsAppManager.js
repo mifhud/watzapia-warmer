@@ -34,7 +34,8 @@ class WhatsAppManager {
                 puppeteer: {
                     headless: true,
                     args: ['--no-sandbox', '--disable-setuid-sandbox']
-                }
+                },
+                restartOnAuthFail: false // Prevent automatic reconnection attempts
             });
 
             this.clients.set(contactId, client);
@@ -81,10 +82,18 @@ class WhatsAppManager {
                 this.updateConnectionStatus(contactId, 'authenticated');
             });
 
-            client.on('auth_failure', (msg) => {
+            client.on('auth_failure', async (msg) => {
                 console.error(`Authentication failed for ${contact.name}:`, msg);
                 this.updateConnectionStatus(contactId, 'auth_failed', msg);
                 this.clients.delete(contactId);
+                
+                // Destroy the client to ensure it doesn't try to reconnect
+                try {
+                    await client.destroy();
+                    console.log(`Client for ${contact.name} has been destroyed after auth failure`);
+                } catch (destroyError) {
+                    console.error(`Error destroying client for ${contact.name} after auth failure:`, destroyError);
+                }
             });
 
             client.on('disconnected', async (reason) => {
@@ -105,6 +114,17 @@ class WhatsAppManager {
                     contactName: contact.name,
                     reason
                 });
+                
+                // Prevent client from attempting to reconnect
+                client.options.restartOnAuthFail = false;
+                
+                // Destroy the client to ensure it doesn't try to reconnect
+                try {
+                    await client.destroy();
+                    console.log(`Client for ${contact.name} has been destroyed to prevent reconnection`);
+                } catch (destroyError) {
+                    console.error(`Error destroying client for ${contact.name}:`, destroyError);
+                }
             });
 
             client.on('message', async (message) => {
@@ -177,10 +197,18 @@ class WhatsAppManager {
             this.updateConnectionStatus(contactId, 'authenticated');
         });
 
-        client.on('auth_failure', (msg) => {
+        client.on('auth_failure', async (msg) => {
             console.error(`Authentication failed for ${contact.name}:`, msg);
             this.updateConnectionStatus(contactId, 'auth_failed', msg);
             this.clients.delete(contactId);
+            
+            // Destroy the client to ensure it doesn't try to reconnect
+            try {
+                await client.destroy();
+                console.log(`Client for ${contact.name} has been destroyed after auth failure`);
+            } catch (destroyError) {
+                console.error(`Error destroying client for ${contact.name} after auth failure:`, destroyError);
+            }
         });
 
         client.on('disconnected', async (reason) => {
@@ -201,6 +229,17 @@ class WhatsAppManager {
                 contactName: contact.name,
                 reason
             });
+            
+            // Prevent client from attempting to reconnect
+            client.options.restartOnAuthFail = false;
+            
+            // Destroy the client to ensure it doesn't try to reconnect
+            try {
+                await client.destroy();
+                console.log(`Client for ${contact.name} has been destroyed to prevent reconnection`);
+            } catch (destroyError) {
+                console.error(`Error destroying client for ${contact.name}:`, destroyError);
+            }
         });
 
         client.on('message', async (message) => {
