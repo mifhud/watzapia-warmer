@@ -39,6 +39,12 @@ class MessageManager {
                     }
                     await fs.writeJson(configPath, this.config, { spaces: 2 });
                 }
+                
+                // Add targetGroupName2 if it doesn't exist
+                if (!this.config.targetGroupName2) {
+                    this.config.targetGroupName2 = "";
+                    await fs.writeJson(configPath, this.config, { spaces: 2 });
+                }
             } else {
                 this.config = {
                     minWarmingInterval: 15, // seconds
@@ -51,6 +57,7 @@ class MessageManager {
                     },
                     enableWorkingHoursOnly: true,
                     targetGroupName1: "Watzapia", // Default group name
+                    targetGroupName2: "", // Second group name
                     sendToGroup: true // Enable sending to group by default
                 };
             }
@@ -67,6 +74,7 @@ class MessageManager {
                 },
                 enableWorkingHoursOnly: true,
                 targetGroupName1: "Watzapia", // Default group name
+                targetGroupName2: "", // Second group name
                 sendToGroup: true // Enable sending to group by default
             };
         }
@@ -187,9 +195,9 @@ class MessageManager {
                     this.messagesSentInTimeout++;
                     console.log(`Messages sent in current timeout: ${this.messagesSentInTimeout}/${maxMessageTimeout}`);
                 } else {
-                    // Odd value - execute processWarmingGroup1
-                    console.log(`Odd value (${randomBalancedValue}) - executing processWarmingGroup1`);
-                    await this.processWarmingGroup1();
+                    // Odd value - execute processWarmingGroup
+                    console.log(`Odd value (${randomBalancedValue}) - executing processWarmingGroup`);
+                    await this.processWarmingGroup();
                     // Increment message counter
                     this.messagesSentInTimeout++;
                     console.log(`Messages sent in current timeout: ${this.messagesSentInTimeout}/${maxMessageTimeout}`);
@@ -241,7 +249,7 @@ class MessageManager {
 
     /**
      * Generates a random value between 1 and 10 with a balanced distribution of odd and even outcomes
-     * This ensures that over time, both processWarming and processWarmingGroup1 are called equally
+     * This ensures that over time, both processWarming and processWarmingGroup are called equally
      * @returns {number} A random integer between 1 and 10
      */
     getBalancedRandomValue() {
@@ -272,7 +280,7 @@ class MessageManager {
         }
     }
 
-    async processWarmingGroup1() {
+    async processWarmingGroup() {
         try {
             // Check if we're in working hours (if enabled)
             if (this.config.enableWorkingHoursOnly && !this.isWithinWorkingHours()) {
@@ -299,8 +307,18 @@ class MessageManager {
                     return;
                 }
                 
-                // Send warming message to group
-                await this.sendWarmingMessageToGroup(senderId, this.config.targetGroupName1);
+                const randomValBetween1To5 = Math.floor(Math.random() * 5) + 1;
+                if (randomValBetween1To5 % 2 === 0) {
+                    // Send warming message to first group
+                    if (this.config.targetGroupName1 && this.config.targetGroupName1.trim() !== '') {
+                        await this.sendWarmingMessageToGroup(senderId, this.config.targetGroupName1);
+                    }
+                } else {
+                    // Send warming message to second group if configured
+                    if (this.config.targetGroupName2 && this.config.targetGroupName2.trim() !== '') {
+                        await this.sendWarmingMessageToGroup(senderId, this.config.targetGroupName2);
+                    }
+                }
             }
         } catch (error) {
             console.error('Error in warming process:', error);
@@ -353,7 +371,7 @@ class MessageManager {
                 recipientId,
                 senderName: senderContact.name,
                 recipientName: recipientContact.name,
-                // message: messageData.message,
+                message: messageData.message,
                 templateId: template.id,
                 templateName: template.name,
                 messageId: result.id._serialized,
@@ -508,7 +526,7 @@ class MessageManager {
                 recipientId,
                 senderName: senderContact.name,
                 recipientName: recipientContact.name,
-                // message: replyMessage,
+                message: replyMessage,
                 messageId: result.id._serialized,
                 sentAt: new Date().toISOString(),
                 replyToMessage: originalMessage

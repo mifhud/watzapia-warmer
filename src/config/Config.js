@@ -61,7 +61,8 @@ class Config {
             maxBackupFiles: 7,
             
             // Group settings
-            targetGroupName1: "Watzapia"
+            targetGroupName1: "Watzapia",
+            targetGroupName2: "Watzapia 2"
         };
     }
 
@@ -256,6 +257,14 @@ class Config {
                 throw new Error('Target Group Name 1 must be a string');
             }
             validated.targetGroupName1 = updates.targetGroupName1;
+        }
+        
+        // Validate targetGroupName2
+        if (updates.targetGroupName2 !== undefined) {
+            if (typeof updates.targetGroupName2 !== 'string') {
+                throw new Error('Target Group Name 2 must be a string');
+            }
+            validated.targetGroupName2 = updates.targetGroupName2;
         }
         
         return validated;
