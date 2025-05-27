@@ -167,3 +167,6 @@ dist
 
 sessions
 data
+
+.wwebjs_auth
+.wwebjs_cache

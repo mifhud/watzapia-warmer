@@ -6,6 +6,7 @@ class WhatsAppAutoWarmer {
         this.templates = [];
         this.config = {};
         this.warmerStatus = { isActive: false };
+        this.currentQRContactId = null; // Track the current contact ID for QR code
 
         this.initializeEventListeners();
         this.setupSocketListeners();
@@ -60,6 +61,24 @@ class WhatsAppAutoWarmer {
             } else if (e.target.classList.contains('remove-message')) {
                 this.removeMessageVariation(e.target);
             }
+        });
+        
+        // Stop Session button in QR code modal
+        document.getElementById('stop-session-btn').addEventListener('click', () => {
+            if (this.currentQRContactId) {
+                this.disconnectContact(this.currentQRContactId);
+                const modal = bootstrap.Modal.getInstance(document.getElementById('qrModal'));
+                if (modal) {
+                    modal.hide();
+                }
+                this.currentQRContactId = null; // Clear the current contact ID
+                this.showAlert('WhatsApp session stopped', 'info');
+            }
+        });
+        
+        // Clear current contact ID when QR modal is closed
+        document.getElementById('qrModal').addEventListener('hidden.bs.modal', () => {
+            this.currentQRContactId = null;
         });
     }
 
@@ -691,6 +710,7 @@ class WhatsAppAutoWarmer {
         const modal = new bootstrap.Modal(document.getElementById('qrModal'));
         document.getElementById('qr-contact-name').textContent = data.contactName;
         document.getElementById('qr-code-image').src = data.qrCode;
+        this.currentQRContactId = data.contactId; // Store the current contact ID
         modal.show();
 
         this.addActivityLog(`QR code generated for ${data.contactName}`, 'info');
