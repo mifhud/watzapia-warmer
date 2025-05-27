@@ -3,6 +3,7 @@ const path = require('path');
 
 class Config {
     constructor() {
+        this.configUpdateCallbacks = [];
         this.configFile = path.join(__dirname, '../../data/config.json');
         this.defaultConfig = {
             // Warming settings
@@ -279,9 +280,35 @@ class Config {
         try {
             await fs.ensureDir(path.dirname(this.configFile));
             await fs.writeJson(this.configFile, config, { spaces: 2 });
+            
+            // Notify all registered callbacks about the config update
+            this.notifyConfigUpdated(config);
         } catch (error) {
             console.error('Error saving config file:', error);
             throw error;
+        }
+    }
+    
+    // Register a callback to be called when config is updated
+    onConfigUpdate(callback) {
+        if (typeof callback === 'function') {
+            this.configUpdateCallbacks.push(callback);
+        }
+    }
+    
+    // Remove a previously registered callback
+    offConfigUpdate(callback) {
+        this.configUpdateCallbacks = this.configUpdateCallbacks.filter(cb => cb !== callback);
+    }
+    
+    // Notify all registered callbacks about config updates
+    notifyConfigUpdated(config) {
+        for (const callback of this.configUpdateCallbacks) {
+            try {
+                callback(config);
+            } catch (error) {
+                console.error('Error in config update callback:', error);
+            }
         }
     }
 

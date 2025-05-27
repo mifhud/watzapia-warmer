@@ -24,6 +24,13 @@ class WhatsAppAutoWarmer {
         this.whatsappManager = new WhatsAppManager(this.io);
         this.messageManager = new MessageManager(this.whatsappManager, this.templateManager, this.contactManager);
         
+        // Register MessageManager to receive config updates
+        this.config.onConfigUpdate((updatedConfig) => {
+            this.messageManager.updateConfig(updatedConfig).catch(error => {
+                console.error('Error updating MessageManager config:', error);
+            });
+        });
+        
         this.setupMiddleware();
         this.setupRoutes();
         this.setupSocketHandlers();
@@ -158,6 +165,7 @@ class WhatsAppAutoWarmer {
         this.app.put('/api/config', async (req, res) => {
             try {
                 const config = await this.config.updateConfig(req.body);
+                // MessageManager will be updated via the registered callback
                 res.json(config);
             } catch (error) {
                 res.status(400).json({ error: error.message });
