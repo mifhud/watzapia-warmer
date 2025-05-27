@@ -13,6 +13,15 @@ class MessageManager {
         this.messageQueue = [];
         this.config = null;
         
+        // Message timeout tracking
+        this.messagesSentInTimeout = 0;
+        this.isInTimeoutPause = false;
+        
+        // Tracking for balanced odd/even distribution
+        this.lastRandomWasEven = null;
+        this.evenCount = 0;
+        this.oddCount = 0;
+        
         this.loadConfig();
     }
 
@@ -78,6 +87,8 @@ class MessageManager {
             }
 
             this.isWarmerActive = true;
+            this.messagesSentInTimeout = 0;
+            this.isInTimeoutPause = false;
             
             // Start the warming process
             this.scheduleNextMessage();
@@ -133,6 +144,26 @@ class MessageManager {
             return;
         }
 
+        // Get timeout configuration
+        const timeoutSeconds = this.config.timeoutSeconds || 60;
+        const maxMessageTimeout = this.config.maxMessageTimeout || 5;
+        
+        // Check if we need to pause due to reaching message limit
+        if (this.messagesSentInTimeout >= maxMessageTimeout) {
+            console.log(`Reached max messages per timeout (${this.messagesSentInTimeout}/${maxMessageTimeout}). Pausing for ${timeoutSeconds} seconds.`);
+            this.isInTimeoutPause = true;
+            
+            // Set a timeout to resume after the pause
+            setTimeout(() => {
+                console.log(`Timeout pause completed. Resetting message counter.`);
+                this.messagesSentInTimeout = 0;
+                this.isInTimeoutPause = false;
+                this.scheduleNextMessage(); // Resume scheduling
+            }, timeoutSeconds * 1000);
+            
+            return; // Exit without scheduling next message
+        }
+        
         // Get min and max warming intervals
         const minInterval = this.config.minWarmingInterval || 15;
         const maxInterval = this.config.maxWarmingInterval || 45;
@@ -140,22 +171,28 @@ class MessageManager {
         // Generate a random interval between min and max (inclusive)
         const randomInterval = Math.floor(Math.random() * (maxInterval - minInterval + 1)) + minInterval;
         
-        console.log(`Using random warming interval: ${randomInterval} minutes (range: ${minInterval}-${maxInterval})`);
+        console.log(`Using random warming interval: ${randomInterval} seconds (range: ${minInterval}-${maxInterval})`);
         
         const intervalMs = randomInterval * 1000;
         
         this.warmerInterval = setTimeout(async () => {
             try {
-                // Check if current minute is even or odd
-                const currentMinute = new Date().getSeconds();
-                if (currentMinute % 2 === 0) {
-                    // Even minute - execute processWarming
-                    console.log('Even minute - executing processWarming');
+                // Generate a balanced random value ensuring even distribution of odd/even outcomes
+                const randomBalancedValue = this.getBalancedRandomValue();
+                if (randomBalancedValue % 2 === 0) {
+                    // Even value - execute processWarming
+                    console.log(`Even value (${randomBalancedValue}) - executing processWarming`);
                     await this.processWarming();
+                    // Increment message counter
+                    this.messagesSentInTimeout++;
+                    console.log(`Messages sent in current timeout: ${this.messagesSentInTimeout}/${maxMessageTimeout}`);
                 } else {
-                    // Odd minute - execute processWarmingGroup1
-                    console.log('Odd minute - executing processWarmingGroup1');
+                    // Odd value - execute processWarmingGroup1
+                    console.log(`Odd value (${randomBalancedValue}) - executing processWarmingGroup1`);
                     await this.processWarmingGroup1();
+                    // Increment message counter
+                    this.messagesSentInTimeout++;
+                    console.log(`Messages sent in current timeout: ${this.messagesSentInTimeout}/${maxMessageTimeout}`);
                 }
                 this.scheduleNextMessage(); // Schedule next iteration
             } catch (error) {
@@ -199,6 +236,39 @@ class MessageManager {
 
         } catch (error) {
             console.error('Error in warming process:', error);
+        }
+    }
+
+    /**
+     * Generates a random value between 1 and 10 with a balanced distribution of odd and even outcomes
+     * This ensures that over time, both processWarming and processWarmingGroup1 are called equally
+     * @returns {number} A random integer between 1 and 10
+     */
+    getBalancedRandomValue() {
+        // If we have no history or the counts are equal, use pure random
+        if (this.lastRandomWasEven === null || this.evenCount === this.oddCount) {
+            const randomVal = Math.floor(Math.random() * 10) + 1;
+            // Update tracking
+            this.lastRandomWasEven = randomVal % 2 === 0;
+            this.lastRandomWasEven ? this.evenCount++ : this.oddCount++;
+            return randomVal;
+        }
+        
+        // If we have more even numbers, force an odd number
+        if (this.evenCount > this.oddCount) {
+            // Generate odd number (1,3,5,7,9)
+            const oddValues = [1, 3, 5, 7, 9];
+            const randomVal = oddValues[Math.floor(Math.random() * oddValues.length)];
+            this.lastRandomWasEven = false;
+            this.oddCount++;
+            return randomVal;
+        } else {
+            // Generate even number (2,4,6,8,10)
+            const evenValues = [2, 4, 6, 8, 10];
+            const randomVal = evenValues[Math.floor(Math.random() * evenValues.length)];
+            this.lastRandomWasEven = true;
+            this.evenCount++;
+            return randomVal;
         }
     }
 
@@ -283,7 +353,7 @@ class MessageManager {
                 recipientId,
                 senderName: senderContact.name,
                 recipientName: recipientContact.name,
-                message: messageData.message,
+                // message: messageData.message,
                 templateId: template.id,
                 templateName: template.name,
                 messageId: result.id._serialized,
@@ -294,11 +364,11 @@ class MessageManager {
             if (await this.hasReachedDailyLimit(recipientId)) {
                 console.log(`Contact ${recipientId} has reached daily message limit, skipping reply`);
             } else {
-                // // Send reply message from recipient to sender after a random delay (30-120 seconds)
-                // const replyDelaySeconds = Math.floor(Math.random() * 90) + 30; // Random delay between 30-120 seconds
-                // console.log(`Scheduling reply message in ${replyDelaySeconds} seconds`);
+                // Send reply message from recipient to sender after a random delay (30-60 seconds)
+                const replyDelaySeconds = Math.floor(Math.random() * 31) + 30; // Random delay between 30-60 seconds
+                console.log(`Scheduling reply message in ${replyDelaySeconds} seconds`);
                 
-                // setTimeout(async () => {
+                setTimeout(async () => {
                     // Check if we're still within working hours when it's time to send the reply
                     if (this.config.enableWorkingHoursOnly && !this.isWithinWorkingHours()) {
                         console.log('Outside working hours, skipping reply message');
@@ -312,7 +382,7 @@ class MessageManager {
                     }
                     
                     await this.sendReplyMessage(recipientId, senderId, messageData.message);
-                // }, replyDelaySeconds * 1000);
+                }, replyDelaySeconds * 1000);
             }
 
         } catch (error) {
@@ -438,7 +508,7 @@ class MessageManager {
                 recipientId,
                 senderName: senderContact.name,
                 recipientName: recipientContact.name,
-                message: replyMessage,
+                // message: replyMessage,
                 messageId: result.id._serialized,
                 sentAt: new Date().toISOString(),
                 replyToMessage: originalMessage
@@ -517,7 +587,11 @@ class MessageManager {
             queuedMessages: this.messageQueue.length,
             config: this.config,
             nextMessageIn: this.warmerInterval ? Math.floor(Math.random() * (this.config.maxWarmingInterval - this.config.minWarmingInterval + 1)) + this.config.minWarmingInterval : null,
-            withinWorkingHours: this.isWithinWorkingHours()
+            withinWorkingHours: this.isWithinWorkingHours(),
+            messagesSentInTimeout: this.messagesSentInTimeout,
+            maxMessageTimeout: this.config.maxMessageTimeout || 5,
+            isInTimeoutPause: this.isInTimeoutPause,
+            timeoutSeconds: this.config.timeoutSeconds || 60
         };
     }
 

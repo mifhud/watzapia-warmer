@@ -170,7 +170,17 @@
                             </div>
                             <div class="mb-3">
                                 <label for="max-messages" class="form-label">Max Messages/Day</label>
-                                <input type="number" class="form-control" id="max-messages" min="1" max="1000" value="50">
+                                <input type="number" class="form-control" id="max-messages" min="1" max="9999999999" value="50">
+                            </div>
+                            <div class="mb-3">
+                                <label for="timeout-seconds" class="form-label">Timeout Seconds</label>
+                                <input type="number" class="form-control" id="timeout-seconds" min="1" max="3600" value="60">
+                                <div class="form-text">Pause duration in seconds if max message limit is reached</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="max-message-timeout" class="form-label">Max Message Timeout</label>
+                                <input type="number" class="form-control" id="max-message-timeout" min="1" max="100" value="5">
+                                <div class="form-text">Maximum messages allowed per timeout period</div>
                             </div>
                             <div class="mb-3">
                                 <label for="targetGroupName1" class="form-label">Target Group Name 1</label>

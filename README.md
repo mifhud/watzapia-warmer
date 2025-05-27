@@ -99,7 +99,7 @@ A comprehensive WhatsApp automation application built with Node.js and whatsapp-
 
 #### Warming Settings
 - **Warming Interval**: Time between warming messages (1-1440 minutes)
-- **Max Messages/Day**: Maximum messages per contact per day (1-1000)
+- **Max Messages/Day**: Maximum messages per contact per day (1-9999999999)
 - **Reply Timeout**: Hours to wait for reply before sending next message (1-168)
 
 #### Working Hours

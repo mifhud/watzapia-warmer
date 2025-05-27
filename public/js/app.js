@@ -249,6 +249,8 @@ class WhatsAppAutoWarmer {
         document.getElementById('min-warming-interval').value = this.config.minWarmingInterval || 15;
         document.getElementById('max-warming-interval').value = this.config.maxWarmingInterval || 45;
         document.getElementById('max-messages').value = this.config.maxMessagesPerDay || 50;
+        document.getElementById('timeout-seconds').value = this.config.timeoutSeconds || 60;
+        document.getElementById('max-message-timeout').value = this.config.maxMessageTimeout || 5;
         document.getElementById('targetGroupName1').value = this.config.targetGroupName1 || '';
         document.getElementById('working-hours-only').checked = this.config.enableWorkingHoursOnly || false;
 
@@ -652,6 +654,8 @@ class WhatsAppAutoWarmer {
                 minWarmingInterval: parseInt(document.getElementById('min-warming-interval').value),
                 maxWarmingInterval: parseInt(document.getElementById('max-warming-interval').value),
                 maxMessagesPerDay: parseInt(document.getElementById('max-messages').value),
+                timeoutSeconds: parseInt(document.getElementById('timeout-seconds').value),
+                maxMessageTimeout: parseInt(document.getElementById('max-message-timeout').value),
                 targetGroupName1: document.getElementById('targetGroupName1').value,
                 enableWorkingHoursOnly: document.getElementById('working-hours-only').checked,
                 workingHours: {
