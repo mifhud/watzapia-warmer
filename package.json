@@ -7,11 +7,17 @@
     "dev": "nodemon src/app.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["whatsapp", "automation", "messaging", "warmer"],
+  "keywords": [
+    "whatsapp",
+    "automation",
+    "messaging",
+    "warmer"
+  ],
   "author": "",
   "license": "ISC",
   "description": "WhatsApp Auto Warmer - Automated WhatsApp messaging system for contact warming",
   "dependencies": {
+    "axios": "^1.9.0",
     "express": "^5.1.0",
     "fs-extra": "^11.3.0",
     "moment-timezone": "^0.6.0",

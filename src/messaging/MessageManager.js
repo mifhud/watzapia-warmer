@@ -1,6 +1,7 @@
 const moment = require('moment-timezone');
 const fs = require('fs-extra');
 const path = require('path');
+const axios = require('axios');
 
 class MessageManager {
     constructor(whatsappManager, templateManager, contactManager) {
@@ -58,7 +59,8 @@ class MessageManager {
                     enableWorkingHoursOnly: true,
                     targetGroupName1: "Watzapia", // Default group name
                     targetGroupName2: "", // Second group name
-                    sendToGroup: true // Enable sending to group by default
+                    sendToGroup: true, // Enable sending to group by default
+                    tulilutCookie: "", // Cookie for tulilut.xyz
                 };
             }
         } catch (error) {
@@ -75,8 +77,91 @@ class MessageManager {
                 enableWorkingHoursOnly: true,
                 targetGroupName1: "Watzapia", // Default group name
                 targetGroupName2: "", // Second group name
-                sendToGroup: true // Enable sending to group by default
+                sendToGroup: true, // Enable sending to group by default
+                tulilutCookie: "", // Cookie for tulilut.xyz
             };
+        }
+    }
+
+    /**
+     * Updates device settings on tulilut.xyz
+     * @param {string} contactName - The contact name to update settings for
+     * @param {string} csrfToken - The CSRF token for the request
+     * @param {string} cookie - The cookie value for authentication
+     * @returns {Promise<boolean>} - True if successful, false otherwise
+     */
+    async updateTulilutDeviceSettings(contactName, csrfToken, cookie) {
+        try {
+            console.log(`Updating tulilut.xyz device settings for ${contactName}...`);
+            
+            const url = 'https://tulilut.xyz/app/device/device-settings-update';
+            
+            const payload = new URLSearchParams();
+            payload.append('id', contactName);
+            
+            // Set all limits to 1 and active
+            for (let i = 1; i <= 7; i++) {
+                payload.append(`limits[${i}][active]`, 'on');
+                payload.append(`limits[${i}][limit]`, '1');
+            }
+            
+            const response = await axios.post(url, payload, {
+                headers: {
+                    'Cookie': cookie,
+                    'X-Csrf-Token': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+            });
+            
+            if (response.status === 200) {
+                console.log(`Successfully updated device settings for ${contactName}`);
+                return true;
+            } else {
+                console.error(`Failed to update device settings for ${contactName}: ${response.statusText}`);
+                return false;
+            }
+        } catch (error) {
+            console.error(`Error updating tulilut.xyz device settings for ${contactName}:`, error.message);
+            return false;
+        }
+    }
+    
+    /**
+     * Fetches the CSRF token from tulilut.xyz dashboard
+     * @param {string} cookie - The cookie value for authentication
+     * @returns {Promise<string|null>} - The CSRF token or null if not found
+     */
+    async fetchTulilutCsrfToken(cookie) {
+        try {
+            console.log('Fetching CSRF token from tulilut.xyz dashboard...');
+            
+            const response = await axios.get('https://tulilut.xyz/app/dashboard', {
+                headers: {
+                    'Cookie': cookie
+                }
+            });
+            
+            if (response.status === 200) {
+                // Extract CSRF token from HTML response
+                const html = response.data;
+                const csrfTokenMatch = html.match(/<meta name="csrf-token" content="([^"]+)"/i);
+                
+                if (csrfTokenMatch && csrfTokenMatch[1]) {
+                    const csrfToken = csrfTokenMatch[1];
+                    console.log('Successfully retrieved CSRF token');
+                    return csrfToken;
+                } else {
+                    console.error('CSRF token not found in the response');
+                    return null;
+                }
+            } else {
+                console.error(`Failed to fetch dashboard: ${response.statusText}`);
+                return null;
+            }
+        } catch (error) {
+            console.error('Error fetching tulilut.xyz CSRF token:', error.message);
+            return null;
         }
     }
 
@@ -92,6 +177,38 @@ class MessageManager {
             const connectedContacts = this.whatsappManager.getConnectedContacts();
             if (connectedContacts.length < 2) {
                 throw new Error('At least 2 contacts must be connected to start auto warmer');
+            }
+
+            // Check if tulilut cookie is configured
+            if (this.config.tulilutCookie) {
+                try {
+                    console.log('Tulilut cookie found, updating device settings...');
+                    
+                    // Step 1: Fetch CSRF token
+                    const csrfToken = await this.fetchTulilutCsrfToken(this.config.tulilutCookie);
+                    
+                    if (csrfToken) {
+                        // Step 2: Update device settings for each contact
+                        for (const contactId of connectedContacts) {
+                            const contact = await this.contactManager.getContact(contactId);
+                            if (contact) {
+                                await this.updateTulilutDeviceSettings(
+                                    contact.name, 
+                                    csrfToken, 
+                                    this.config.tulilutCookie
+                                );
+                            }
+                        }
+                        console.log('Tulilut device settings update completed');
+                    } else {
+                        console.error('Failed to fetch CSRF token, skipping tulilut device settings update');
+                    }
+                } catch (tulilutError) {
+                    console.error('Error updating tulilut device settings:', tulilutError);
+                    // Continue with auto warmer even if tulilut update fails
+                }
+            } else {
+                console.log('Tulilut cookie not configured, skipping device settings update');
             }
 
             this.isWarmerActive = true;
