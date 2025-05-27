@@ -33,6 +33,7 @@ class WhatsAppManager {
                 }),
                 puppeteer: {
                     headless: true,
+                    args: ['--no-sandbox', '--disable-setuid-sandbox']
                 }
             });
 

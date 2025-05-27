@@ -36,11 +36,11 @@ A comprehensive WhatsApp automation application built with Node.js and whatsapp-
 ## Installation
 
 ### Prerequisites
-- Node.js (v14 or higher)
-- npm or yarn
-- Chrome/Chromium browser (for WhatsApp Web)
+- Node.js (v14 or higher) OR Docker
+- npm or yarn (for non-Docker installation)
+- Chrome/Chromium browser (for WhatsApp Web, automatically installed in Docker)
 
-### Setup Instructions
+### Setup Instructions (Standard)
 
 1. **Clone or download the project**
    ```bash
@@ -59,6 +59,31 @@ A comprehensive WhatsApp automation application built with Node.js and whatsapp-
 
 4. **Access the web interface**
    Open your browser and go to: `http://localhost:3000`
+
+### Setup Instructions (Docker)
+
+1. **Clone or download the project**
+   ```bash
+   cd whatsapp-auto-warmer
+   ```
+
+2. **Build and start with Docker Compose**
+   ```bash
+   docker-compose up -d
+   ```
+
+3. **Access the web interface**
+   Open your browser and go to: `http://localhost:3000`
+
+4. **View logs (optional)**
+   ```bash
+   docker-compose logs -f
+   ```
+
+5. **Stop the application**
+   ```bash
+   docker-compose down
+   ```
 
 ## Usage Guide
 
@@ -143,7 +168,10 @@ whatsapp-auto-warmer/
 │   ├── config.json           # Application configuration
 │   ├── message-history.json  # Message history
 │   └── sessions/             # WhatsApp session data
-└── package.json
+├── Dockerfile                # Docker container configuration
+├── docker-compose.yml        # Docker Compose configuration
+├── .dockerignore             # Files to exclude from Docker build
+└── package.json              # Node.js dependencies and scripts
 ```
 
 ## Data Storage
@@ -192,6 +220,24 @@ All data is stored in JSON files in the `data/` directory:
 - Check browser console for frontend errors
 - Server logs are displayed in the terminal
 - Activity log in the web interface shows real-time events
+- For Docker: Use `docker-compose logs -f` to view logs
+
+### Docker-specific Troubleshooting
+
+1. **Container Won't Start**
+   - Check Docker logs: `docker-compose logs -f`
+   - Ensure ports are not already in use
+   - Verify Docker has sufficient resources
+
+2. **QR Code Issues in Docker**
+   - Ensure the container has all required dependencies
+   - Check if Chromium is working properly in the container
+   - Try rebuilding the image: `docker-compose build --no-cache`
+
+3. **Data Persistence Issues**
+   - Verify volume mappings in docker-compose.yml
+   - Check permissions on host directories
+   - Ensure data directory exists on host
 
 ## Support
 
