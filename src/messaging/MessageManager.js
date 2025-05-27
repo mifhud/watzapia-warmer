@@ -191,15 +191,13 @@ class MessageManager {
                     // Even value - execute processWarming
                     console.log(`Even value (${randomBalancedValue}) - executing processWarming`);
                     await this.processWarming();
-                    // Increment message counter
-                    this.messagesSentInTimeout++;
+                    // Note: messagesSentInTimeout is now incremented inside processWarming for each message
                     console.log(`Messages sent in current timeout: ${this.messagesSentInTimeout}/${maxMessageTimeout}`);
                 } else {
                     // Odd value - execute processWarmingGroup
                     console.log(`Odd value (${randomBalancedValue}) - executing processWarmingGroup`);
                     await this.processWarmingGroup();
-                    // Increment message counter
-                    this.messagesSentInTimeout++;
+                    // Note: messagesSentInTimeout is now incremented inside processWarmingGroup for each message
                     console.log(`Messages sent in current timeout: ${this.messagesSentInTimeout}/${maxMessageTimeout}`);
                 }
                 this.scheduleNextMessage(); // Schedule next iteration
@@ -228,19 +226,51 @@ class MessageManager {
                 return;
             }
             
-            // Select random sender
-            const senderId = connectedContacts[Math.floor(Math.random() * connectedContacts.length)];
-            const possibleRecipients = connectedContacts.filter(id => id !== senderId);
-            const recipientId = possibleRecipients[Math.floor(Math.random() * possibleRecipients.length)];
+            // Track if at least one message was sent
+            let messageSent = false;
             
-            // Check daily message limits
-            if (await this.hasReachedDailyLimit(senderId)) {
-                console.log(`Contact ${senderId} has reached daily message limit`);
-                return;
+            // Get timeout configuration
+            const maxMessageTimeout = this.config.maxMessageTimeout || 5;
+            
+            // Try to send a message from each connected contact
+            for (const senderId of connectedContacts) {
+                // Check if we've reached the max messages per timeout
+                if (this.messagesSentInTimeout >= maxMessageTimeout) {
+                    console.log(`Reached max messages per timeout (${this.messagesSentInTimeout}/${maxMessageTimeout}). Stopping this warming cycle.`);
+                    break;
+                }
+                
+                try {
+                    // Check daily message limits for this sender
+                    if (await this.hasReachedDailyLimit(senderId)) {
+                        console.log(`Contact ${senderId} has reached daily message limit, skipping`);
+                        continue;
+                    }
+                    
+                    // Get possible recipients (all contacts except the sender)
+                    const possibleRecipients = connectedContacts.filter(id => id !== senderId);
+                    
+                    // Select a random recipient
+                    const recipientId = possibleRecipients[Math.floor(Math.random() * possibleRecipients.length)];
+                    
+                    // Send warming message to individual
+                    await this.sendWarmingMessage(senderId, recipientId);
+                    messageSent = true;
+                    
+                    // Increment message counter for timeout tracking
+                    this.messagesSentInTimeout++;
+                    
+                    // Log success
+                    console.log(`Successfully sent warming message from contact ${senderId}`);
+                } catch (senderError) {
+                    console.error(`Error sending message from contact ${senderId}:`, senderError);
+                    // Continue with next sender
+                }
             }
             
-            // Send warming message to individual
-            await this.sendWarmingMessage(senderId, recipientId);
+            if (!messageSent) {
+                console.log('No messages were sent - all contacts may have reached their daily limits');
+            }
 
         } catch (error) {
             console.error('Error in warming process:', error);
@@ -292,32 +322,62 @@ class MessageManager {
             const connectedContacts = this.whatsappManager.getConnectedContacts();
             
             if (this.config.sendToGroup) {
-                // For group messaging, we only need one contact to send the message
+                // For group messaging, we need at least one contact
                 if (connectedContacts.length < 1) {
                     console.log('No connected contacts for warming');
                     return;
                 }
                 
-                // Select random sender
-                const senderId = connectedContacts[Math.floor(Math.random() * connectedContacts.length)];
+                // Track if at least one message was sent
+                let messageSent = false;
                 
-                // Check daily message limits
-                if (await this.hasReachedDailyLimit(senderId)) {
-                    console.log(`Contact ${senderId} has reached daily message limit`);
-                    return;
+                // Get timeout configuration
+                const maxMessageTimeout = this.config.maxMessageTimeout || 5;
+                
+                // Try to send a message from each connected contact
+                for (const senderId of connectedContacts) {
+                    // Check if we've reached the max messages per timeout
+                    if (this.messagesSentInTimeout >= maxMessageTimeout) {
+                        console.log(`Reached max messages per timeout (${this.messagesSentInTimeout}/${maxMessageTimeout}). Stopping this warming cycle.`);
+                        break;
+                    }
+                    
+                    try {
+                        // Check daily message limits for this sender
+                        if (await this.hasReachedDailyLimit(senderId)) {
+                            console.log(`Contact ${senderId} has reached daily message limit, skipping`);
+                            continue;
+                        }
+                        
+                        // Randomly choose which group to send to
+                        const randomValBetween1To5 = Math.floor(Math.random() * 5) + 1;
+                        if (randomValBetween1To5 % 2 === 0) {
+                            // Send warming message to first group
+                            if (this.config.targetGroupName1 && this.config.targetGroupName1.trim() !== '') {
+                                await this.sendWarmingMessageToGroup(senderId, this.config.targetGroupName1);
+                                messageSent = true;
+                                // Increment message counter for timeout tracking
+                                this.messagesSentInTimeout++;
+                                console.log(`Successfully sent group warming message from contact ${senderId} to group ${this.config.targetGroupName1}`);
+                            }
+                        } else {
+                            // Send warming message to second group if configured
+                            if (this.config.targetGroupName2 && this.config.targetGroupName2.trim() !== '') {
+                                await this.sendWarmingMessageToGroup(senderId, this.config.targetGroupName2);
+                                messageSent = true;
+                                // Increment message counter for timeout tracking
+                                this.messagesSentInTimeout++;
+                                console.log(`Successfully sent group warming message from contact ${senderId} to group ${this.config.targetGroupName2}`);
+                            }
+                        }
+                    } catch (senderError) {
+                        console.error(`Error sending group message from contact ${senderId}:`, senderError);
+                        // Continue with next sender
+                    }
                 }
                 
-                const randomValBetween1To5 = Math.floor(Math.random() * 5) + 1;
-                if (randomValBetween1To5 % 2 === 0) {
-                    // Send warming message to first group
-                    if (this.config.targetGroupName1 && this.config.targetGroupName1.trim() !== '') {
-                        await this.sendWarmingMessageToGroup(senderId, this.config.targetGroupName1);
-                    }
-                } else {
-                    // Send warming message to second group if configured
-                    if (this.config.targetGroupName2 && this.config.targetGroupName2.trim() !== '') {
-                        await this.sendWarmingMessageToGroup(senderId, this.config.targetGroupName2);
-                    }
+                if (!messageSent) {
+                    console.log('No group messages were sent - all contacts may have reached their daily limits or no valid groups configured');
                 }
             }
         } catch (error) {
