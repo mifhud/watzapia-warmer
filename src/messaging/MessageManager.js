@@ -26,9 +26,112 @@ class MessageManager {
         // Track last recipient index for each sender (maps senderId -> lastIndex)
         this.lastRecipientIndex = {};
         
+        // Tulilut reset scheduler
+        this.tulilutResetScheduler = null;
+        
         this.loadConfig();
     }
 
+    /**
+     * Sets up the scheduler for resetting tulilut device settings
+     * @private
+     */
+    setupTulilutResetScheduler() {
+        // Clear any existing scheduler
+        if (this.tulilutResetScheduler) {
+            clearTimeout(this.tulilutResetScheduler);
+            this.tulilutResetScheduler = null;
+        }
+        
+        // If no reset time is configured, don't set up the scheduler
+        if (!this.config || !this.config.tulilutResetTime) {
+            console.log('Tulilut reset scheduler not set up: no reset time configured');
+            return;
+        }
+        
+        // Calculate the time until the next reset
+        const now = moment().tz(this.config.timezone || 'Asia/Jakarta');
+        const resetTimeParts = this.config.tulilutResetTime.split(':');
+        const resetHour = parseInt(resetTimeParts[0]);
+        const resetMinute = parseInt(resetTimeParts[1]);
+        
+        // Create a moment object for today's reset time
+        const resetTime = moment().tz(this.config.timezone || 'Asia/Jakarta')
+            .hour(resetHour)
+            .minute(resetMinute)
+            .second(0)
+            .millisecond(0);
+        
+        // If the reset time has already passed today, schedule for tomorrow
+        if (now.isAfter(resetTime)) {
+            resetTime.add(1, 'day');
+        }
+        
+        // Calculate milliseconds until the reset time
+        const msUntilReset = resetTime.diff(now);
+        
+        console.log(`Tulilut reset scheduler set up for ${resetTime.format('YYYY-MM-DD HH:mm:ss')} (${msUntilReset}ms from now)`);
+        
+        // Set up the scheduler
+        this.tulilutResetScheduler = setTimeout(() => {
+            this.resetTulilutDeviceSettings().catch(error => {
+                console.error('Error in scheduled tulilut device settings reset:', error);
+            });
+            
+            // Set up the next day's scheduler
+            this.setupTulilutResetScheduler();
+        }, msUntilReset);
+    }
+    
+    /**
+     * Resets tulilut device settings to limit 1 for all connected contacts
+     * @returns {Promise<void>}
+     */
+    async resetTulilutDeviceSettings() {
+        try {
+            console.log('Running scheduled tulilut device settings reset...');
+            
+            // Check if tulilut cookie is configured
+            if (!this.config.tulilutCookie) {
+                console.log('Tulilut cookie not configured, skipping device settings reset');
+                return;
+            }
+            
+            // Get connected contacts
+            const connectedContacts = this.whatsappManager.getConnectedContacts();
+            if (connectedContacts.length === 0) {
+                console.log('No connected contacts, skipping tulilut device settings reset');
+                return;
+            }
+            
+            // Fetch CSRF token
+            const csrfToken = await this.fetchTulilutCsrfToken(this.config.tulilutCookie);
+            if (!csrfToken) {
+                console.error('Failed to fetch CSRF token, skipping tulilut device settings reset');
+                return;
+            }
+            
+            // Update device settings for each contact with limit 1
+            for (const contactId of connectedContacts) {
+                const contact = await this.contactManager.getContact(contactId);
+                if (contact) {
+                    // Force limit to 1 by passing null for phoneNumber
+                    await this.updateTulilutDeviceSettings(
+                        contact.name, 
+                        csrfToken, 
+                        this.config.tulilutCookie,
+                        null // This will force limit to 1
+                    );
+                }
+            }
+            
+            console.log('Tulilut device settings reset completed successfully');
+        } catch (error) {
+            console.error('Error resetting tulilut device settings:', error);
+            throw error;
+        }
+    }
+    
     async loadConfig() {
         try {
             const configPath = path.join(__dirname, '../../data/config.json');
@@ -55,6 +158,9 @@ class MessageManager {
                     this.config.tulilutCookie = "";
                     await fs.writeJson(configPath, this.config, { spaces: 2 });
                 }
+                
+                // Set up the tulilut reset scheduler
+                this.setupTulilutResetScheduler();
             } else {
                 this.config = {
                     minWarmingInterval: 15, // seconds
@@ -168,12 +274,14 @@ class MessageManager {
             // Default limit value
             let limitValue = 1;
             
-            // If phone number is provided, try to fetch the current success count
-            if (phoneNumber && cookie) {
+            // If phone number is provided and not null, try to fetch the current success count
+            if (phoneNumber && phoneNumber !== null && cookie) {
                 const successCount = await this.fetchTulilutSuccessCount(contactName, phoneNumber, cookie);
                 // Increment the success count by 1 (minimum 1)
                 limitValue = Math.max(1, successCount + 1);
                 console.log(`Setting limit value to ${limitValue} based on current success count of ${successCount}`);
+            } else {
+                console.log(`Setting limit value to 1 for ${contactName} (forced reset)`);
             }
             
             // Set all limits to the calculated value and active
@@ -916,6 +1024,11 @@ class MessageManager {
             
             const configPath = path.join(__dirname, '../../data/config.json');
             await fs.writeJson(configPath, this.config, { spaces: 2 });
+            
+            // Set up the tulilut reset scheduler if the reset time has changed
+            if (newConfig.tulilutResetTime !== undefined) {
+                this.setupTulilutResetScheduler();
+            }
             
             console.log('Message manager config updated');
             return this.config;

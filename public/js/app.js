@@ -273,6 +273,7 @@ class WhatsAppAutoWarmer {
         document.getElementById('targetGroupName1').value = this.config.targetGroupName1 || '';
         document.getElementById('targetGroupName2').value = this.config.targetGroupName2 || '';
         document.getElementById('tulilutCookie').value = this.config.tulilutCookie || '';
+        document.getElementById('tulilutResetTime').value = this.config.tulilutResetTime || '23:59';
         document.getElementById('working-hours-only').checked = this.config.enableWorkingHoursOnly || false;
 
         if (this.config.workingHours) {
@@ -680,6 +681,7 @@ class WhatsAppAutoWarmer {
                 targetGroupName1: document.getElementById('targetGroupName1').value,
                 targetGroupName2: document.getElementById('targetGroupName2').value,
                 tulilutCookie: document.getElementById('tulilutCookie').value,
+                tulilutResetTime: document.getElementById('tulilutResetTime').value,
                 enableWorkingHoursOnly: document.getElementById('working-hours-only').checked,
                 workingHours: {
                     start: document.getElementById('work-start').value,

@@ -66,7 +66,8 @@ class Config {
             targetGroupName2: "Watzapia 2",
             
             // Integration settings
-            tulilutCookie: "" // Cookie for tulilut.xyz
+            tulilutCookie: "", // Cookie for tulilut.xyz
+            tulilutResetTime: "23:59", // Time to reset tulilut device settings to limit 1
         };
     }
 
@@ -277,6 +278,14 @@ class Config {
                 throw new Error('Tulilut Cookie must be a string');
             }
             validated.tulilutCookie = updates.tulilutCookie;
+        }
+        
+        // Validate tulilutResetTime
+        if (updates.tulilutResetTime !== undefined) {
+            if (typeof updates.tulilutResetTime !== 'string' || !this.isValidTime(updates.tulilutResetTime)) {
+                throw new Error('Tulilut Reset Time must be in HH:MM format');
+            }
+            validated.tulilutResetTime = updates.tulilutResetTime;
         }
         
         return validated;
