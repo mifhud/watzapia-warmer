@@ -808,6 +808,32 @@ class MessageManager {
                 messageId: result.id._serialized,
                 sentAt: new Date().toISOString()
             });
+
+            // Check if recipient has reached daily limit before scheduling reply
+            if (await this.hasReachedDailyLimit(recipientId)) {
+                console.log(`Contact ${recipientId} has reached daily message limit, skipping reply`);
+            } else {
+                // Send reply message from recipient to sender after a random delay (30-60 seconds)
+                const replyDelaySeconds = Math.floor(Math.random() * 31) + 30; // Random delay between 30-60 seconds
+                console.log(`Scheduling reply message in ${replyDelaySeconds} seconds`);
+                
+                setTimeout(async () => {
+                    // Check if we're still within working hours when it's time to send the reply
+                    if (this.config.enableWorkingHoursOnly && !this.isWithinWorkingHours()) {
+                        console.log('Outside working hours, skipping reply message');
+                        return;
+                    }
+                    
+                    // Check again if recipient has reached daily limit
+                    if (await this.hasReachedDailyLimit(recipientId)) {
+                        console.log(`Contact ${recipientId} has reached daily message limit, skipping reply`);
+                        return;
+                    }
+                    
+                    await this.sendReplyMessage(recipientId, senderId, messageData.message);
+                }, replyDelaySeconds * 1000);
+            }
+
         } catch (error) {
             console.error('Error sending warming message:', error);
             throw error;
