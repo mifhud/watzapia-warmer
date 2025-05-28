@@ -90,13 +90,70 @@ class MessageManager {
     }
 
     /**
+     * Fetches the current success count for a contact from tulilut.xyz
+     * @param {string} contactName - The contact name to fetch data for
+     * @param {string} phoneNumber - The phone number to match in the receiver field
+     * @param {string} cookie - The cookie value for authentication
+     * @returns {Promise<number>} - The current success count or 0 if not found
+     */
+    async fetchTulilutSuccessCount(contactName, phoneNumber, cookie) {
+        try {
+            console.log(`Fetching success count for ${contactName} (${phoneNumber})...`);
+            
+            // Get current date in YYYY-MM-DD format
+            const currentDate = moment().format('YYYY-MM-DD');
+            
+            // Construct the URL with the current date
+            const url = `https://tulilut.xyz/app/history?receiver=&date=${currentDate}&draw=1&columns%5B0%5D%5Bdata%5D=responsive_id&columns%5B0%5D%5Bname%5D=&columns%5B0%5D%5Bsearchable%5D=true&columns%5B0%5D%5Borderable%5D=false&columns%5B0%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B0%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B1%5D%5Bdata%5D=receiver&columns%5B1%5D%5Bname%5D=&columns%5B1%5D%5Bsearchable%5D=true&columns%5B1%5D%5Borderable%5D=true&columns%5B1%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B1%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B2%5D%5Bdata%5D=success&columns%5B2%5D%5Bname%5D=&columns%5B2%5D%5Bsearchable%5D=true&columns%5B2%5D%5Borderable%5D=true&columns%5B2%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B2%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B3%5D%5Bdata%5D=amount&columns%5B3%5D%5Bname%5D=&columns%5B3%5D%5Bsearchable%5D=true&columns%5B3%5D%5Borderable%5D=true&columns%5B3%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B3%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B4%5D%5Bdata%5D=status&columns%5B4%5D%5Bname%5D=&columns%5B4%5D%5Bsearchable%5D=true&columns%5B4%5D%5Borderable%5D=true&columns%5B4%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B4%5D%5Bsearch%5D%5Bregex%5D=false&order%5B0%5D%5Bcolumn%5D=0&order%5B0%5D%5Bdir%5D=asc&start=0&length=20&search%5Bvalue%5D=&search%5Bregex%5D=false&_=${Date.now()}`;
+            
+            const response = await axios.get(url, {
+                headers: {
+                    'Cookie': cookie,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            
+            if (response.status === 200 && response.data && response.data.data) {
+                // Extract the phone number without any non-digit characters for comparison
+                const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
+                
+                // Find the matching receiver entry
+                const matchingEntry = response.data.data.find(entry => {
+                    // Clean the receiver string to extract just the phone number part
+                    const receiverPhoneMatch = entry.receiver.match(/(\d+)/);
+                    if (receiverPhoneMatch) {
+                        const receiverPhone = receiverPhoneMatch[0];
+                        return receiverPhone.includes(cleanPhoneNumber) || cleanPhoneNumber.includes(receiverPhone);
+                    }
+                    return false;
+                });
+                
+                if (matchingEntry) {
+                    console.log(`Found matching entry for ${contactName}: success count = ${matchingEntry.success}`);
+                    return matchingEntry.success || 0;
+                } else {
+                    console.log(`No matching entry found for ${contactName} with phone ${phoneNumber}`);
+                    return 0;
+                }
+            } else {
+                console.error(`Failed to fetch success count: ${response.statusText}`);
+                return 0;
+            }
+        } catch (error) {
+            console.error(`Error fetching tulilut.xyz success count for ${contactName}:`, error.message);
+            return 0;
+        }
+    }
+
+    /**
      * Updates device settings on tulilut.xyz
      * @param {string} contactName - The contact name to update settings for
+     * @param {string} phoneNumber - The phone number to match in the receiver field
      * @param {string} csrfToken - The CSRF token for the request
      * @param {string} cookie - The cookie value for authentication
      * @returns {Promise<boolean>} - True if successful, false otherwise
      */
-    async updateTulilutDeviceSettings(contactName, csrfToken, cookie) {
+    async updateTulilutDeviceSettings(contactName, csrfToken, cookie, phoneNumber = null) {
         try {
             console.log(`Updating tulilut.xyz device settings for ${contactName}...`);
             
@@ -105,10 +162,21 @@ class MessageManager {
             const payload = new URLSearchParams();
             payload.append('id', contactName);
             
-            // Set all limits to 1 and active
+            // Default limit value
+            let limitValue = 1;
+            
+            // If phone number is provided, try to fetch the current success count
+            if (phoneNumber && cookie) {
+                const successCount = await this.fetchTulilutSuccessCount(contactName, phoneNumber, cookie);
+                // Increment the success count by 1 (minimum 1)
+                limitValue = Math.max(1, successCount + 1);
+                console.log(`Setting limit value to ${limitValue} based on current success count of ${successCount}`);
+            }
+            
+            // Set all limits to the calculated value and active
             for (let i = 1; i <= 7; i++) {
                 payload.append(`limits[${i}][active]`, 'on');
-                payload.append(`limits[${i}][limit]`, '1');
+                payload.append(`limits[${i}][limit]`, limitValue.toString());
             }
             
             const response = await axios.post(url, payload, {
@@ -121,7 +189,7 @@ class MessageManager {
             });
             
             if (response.status === 200) {
-                console.log(`Successfully updated device settings for ${contactName}`);
+                console.log(`Successfully updated device settings for ${contactName} with limit value ${limitValue}`);
                 return true;
             } else {
                 console.error(`Failed to update device settings for ${contactName}: ${response.statusText}`);
@@ -201,7 +269,8 @@ class MessageManager {
                                 await this.updateTulilutDeviceSettings(
                                     contact.name, 
                                     csrfToken, 
-                                    this.config.tulilutCookie
+                                    this.config.tulilutCookie,
+                                    contact.phoneNumber
                                 );
                             }
                         }
@@ -307,7 +376,7 @@ class MessageManager {
         const intervalMs = randomInterval * 1000;
         
         this.warmerInterval = setTimeout(async () => {
-            try {
+            try {                
                 // Generate a balanced random value ensuring even distribution of odd/even outcomes
                 const randomBalancedValue = this.getBalancedRandomValue();
                 if (randomBalancedValue % 2 === 0) {
@@ -323,6 +392,39 @@ class MessageManager {
                     // Note: messagesSentInTimeout is now incremented inside processWarmingGroup for each message
                     console.log(`Messages sent in current timeout: ${this.messagesSentInTimeout}/${maxMessageTimeout}`);
                 }
+
+                // Check if tulilut cookie is configured to update device settings periodically
+                if (this.config.tulilutCookie) {
+                    try {
+                        // Update Tulilut device settings for all connected contacts
+                        const connectedContacts = this.whatsappManager.getConnectedContacts();
+                        if (connectedContacts.length > 0) {
+                            // Fetch CSRF token
+                            const csrfToken = await this.fetchTulilutCsrfToken(this.config.tulilutCookie);
+                            
+                            if (csrfToken) {
+                                console.log('Periodically updating Tulilut device settings for all connected contacts...');
+                                
+                                // Update device settings for each contact with incremented success count
+                                for (const contactId of connectedContacts) {
+                                    const contact = await this.contactManager.getContact(contactId);
+                                    if (contact) {
+                                        await this.updateTulilutDeviceSettings(
+                                            contact.name, 
+                                            csrfToken, 
+                                            this.config.tulilutCookie,
+                                            contact.phoneNumber
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    } catch (tulilutError) {
+                        console.error('Error updating Tulilut device settings during warming cycle:', tulilutError);
+                        // Continue with warming process even if Tulilut update fails
+                    }
+                }
+
                 this.scheduleNextMessage(); // Schedule next iteration
             } catch (error) {
                 console.error('Error in warming process:', error);
@@ -664,7 +766,7 @@ class MessageManager {
         // }
         
         // Add @c.us for WhatsApp format
-        return phoneNumber.replace('+', '') + '@c.us';
+        return phoneNumber + '@c.us';
     }
     
     async sendReplyMessage(senderId, recipientId, originalMessage) {
