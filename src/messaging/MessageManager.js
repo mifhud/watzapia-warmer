@@ -23,6 +23,9 @@ class MessageManager {
         this.evenCount = 0;
         this.oddCount = 0;
         
+        // Track last recipient index for each sender (maps senderId -> lastIndex)
+        this.lastRecipientIndex = {};
+        
         this.loadConfig();
     }
 
@@ -475,8 +478,43 @@ class MessageManager {
                     // Get possible recipients (all contacts except the sender)
                     const possibleRecipients = connectedContacts.filter(id => id !== senderId);
                     
-                    // Select a random recipient
-                    const recipientId = possibleRecipients[Math.floor(Math.random() * possibleRecipients.length)];
+                    // Sort possible recipients by phone number
+                    const sortedRecipients = [...possibleRecipients];
+                    const recipientContacts = await Promise.all(
+                        sortedRecipients.map(id => this.contactManager.getContact(id))
+                    );
+                    
+                    // Create a mapping of IDs to contacts for sorting
+                    const contactMap = {};
+                    recipientContacts.forEach(contact => {
+                        if (contact) {
+                            contactMap[contact.id] = contact;
+                        }
+                    });
+                    
+                    // Sort the recipient IDs by phone number
+                    sortedRecipients.sort((a, b) => {
+                        const contactA = contactMap[a];
+                        const contactB = contactMap[b];
+                        if (contactA && contactB) {
+                            return contactA.phoneNumber.localeCompare(contactB.phoneNumber);
+                        }
+                        return 0;
+                    });
+                    
+                    // Get the last index used for this sender, or -1 if not used before
+                    const lastIndex = this.lastRecipientIndex[senderId] || -1;
+                    
+                    // Calculate the next index (wrap around if we reach the end)
+                    const nextIndex = (lastIndex + 1) % sortedRecipients.length;
+                    
+                    // Update the last index for this sender
+                    this.lastRecipientIndex[senderId] = nextIndex;
+                    
+                    // Select the next ID from the sorted list
+                    const recipientId = sortedRecipients[nextIndex];
+                    
+                    console.log(`Selected next recipient for ${senderId}: ${recipientId} (index ${nextIndex} of ${sortedRecipients.length})`);
                     
                     // Send warming message to individual
                     await this.sendWarmingMessage(senderId, recipientId);
