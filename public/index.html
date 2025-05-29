@@ -150,6 +150,44 @@
                     </div>
                 </div>
 
+                <!-- Direct Message Card -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-paper-plane me-2"></i>
+                            Send Direct Message
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="direct-message-form">
+                            <div class="mb-3">
+                                <label for="direct-message-contact" class="form-label">Select Contact</label>
+                                <select class="form-select" id="direct-message-contact" required>
+                                    <option value="">Select a connected contact</option>
+                                    <!-- Connected contacts will be populated here -->
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="direct-message-phone" class="form-label">Recipient Phone Number</label>
+                                <input type="tel" class="form-control" id="direct-message-phone" placeholder="62812345678" required>
+                                <div class="form-text">
+                                    <strong>Important:</strong> Include country code without '+' (e.g., 62 for Indonesia, 1 for US).<br>
+                                    Format: [country code][number] (e.g., 62812345678)
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="direct-message-text" class="form-label">Message</label>
+                                <textarea class="form-control" id="direct-message-text" rows="3" required></textarea>
+                            </div>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-paper-plane me-2"></i>Send Message
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
                 <!-- Configuration -->
                 <div class="card mb-4">
                     <div class="card-header">

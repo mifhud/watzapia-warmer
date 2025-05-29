@@ -39,6 +39,12 @@ class WhatsAppAutoWarmer {
             this.updateConfiguration();
         });
 
+        // Direct message form submission
+        document.getElementById('direct-message-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.sendDirectMessage();
+        });
+
         // Auto warmer controls
         document.getElementById('start-warmer-btn').addEventListener('click', () => {
             this.startAutoWarmer();
@@ -193,6 +199,24 @@ class WhatsAppAutoWarmer {
     renderContacts() {
         const tbody = document.getElementById('contacts-tbody');
         tbody.innerHTML = '';
+        
+        // Also update the direct message contact dropdown
+        const directMessageContactSelect = document.getElementById('direct-message-contact');
+        if (directMessageContactSelect) {
+            // Clear all options except the first one
+            while (directMessageContactSelect.options.length > 1) {
+                directMessageContactSelect.remove(1);
+            }
+            
+            // Add connected contacts to the dropdown
+            const connectedContacts = this.contacts.filter(contact => contact.status === 'connected');
+            connectedContacts.forEach(contact => {
+                const option = document.createElement('option');
+                option.value = contact.id;
+                option.textContent = `${contact.name} (${contact.phoneNumber})`;
+                directMessageContactSelect.appendChild(option);
+            });
+        }
 
         this.contacts.forEach(contact => {
             const row = document.createElement('tr');
@@ -897,6 +921,79 @@ class WhatsAppAutoWarmer {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    async sendDirectMessage() {
+        try {
+            const contactId = document.getElementById('direct-message-contact').value;
+            const phoneNumber = document.getElementById('direct-message-phone').value;
+            const message = document.getElementById('direct-message-text').value;
+            
+            if (!contactId) {
+                this.showAlert('Please select a connected contact', 'warning');
+                return;
+            }
+            
+            if (!phoneNumber) {
+                this.showAlert('Please enter a recipient phone number', 'warning');
+                return;
+            }
+            
+            if (!message) {
+                this.showAlert('Please enter a message', 'warning');
+                return;
+            }
+            
+            // Format phone number if needed (remove spaces, dashes, etc.)
+            let formattedPhoneNumber = phoneNumber.replace(/[^0-9]/g, '');
+            
+            // Basic validation for phone number
+            if (formattedPhoneNumber.length < 10) {
+                this.showAlert('Phone number appears to be too short. Please include country code (e.g., 62 for Indonesia)', 'warning');
+                return;
+            }
+            
+            // Show loading state
+            const submitButton = document.querySelector('#direct-message-form button[type="submit"]');
+            const originalButtonText = submitButton.innerHTML;
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Sending...';
+            
+            // Send the message
+            const response = await fetch('/api/message/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contactId,
+                    phoneNumber: formattedPhoneNumber,
+                    message
+                })
+            });
+            
+            // Reset button state
+            submitButton.disabled = false;
+            submitButton.innerHTML = originalButtonText;
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to send message');
+            }
+            
+            const result = await response.json();
+            
+            // Clear the form
+            document.getElementById('direct-message-phone').value = '';
+            document.getElementById('direct-message-text').value = '';
+            
+            // Show success message
+            this.showAlert('Message sent successfully', 'success');
+            this.addActivityLog(`Message sent to ${formattedPhoneNumber}`, 'success');
+        } catch (error) {
+            console.error('Error sending direct message:', error);
+            this.showAlert(`Error sending message: ${error.message}`, 'danger');
+        }
     }
 
     startPeriodicUpdates() {

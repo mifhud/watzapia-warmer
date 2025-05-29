@@ -205,6 +205,34 @@ body {
     color: #6c757d;
 }
 
+/* Direct Message Card */
+#direct-message-form .form-control,
+#direct-message-form .form-select {
+    border: 1px solid #e9ecef;
+    transition: all 0.2s ease-in-out;
+}
+
+#direct-message-form .form-control:focus,
+#direct-message-form .form-select:focus {
+    border-color: var(--whatsapp-green);
+    box-shadow: 0 0 0 0.2rem rgba(37, 211, 102, 0.15);
+}
+
+#direct-message-form textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+#direct-message-form button[type="submit"] {
+    background-color: var(--whatsapp-green);
+    border-color: var(--whatsapp-green);
+}
+
+#direct-message-form button[type="submit"]:hover {
+    background-color: var(--whatsapp-dark-green);
+    border-color: var(--whatsapp-dark-green);
+}
+
 /* Template Cards */
 .template-card {
     border: 1px solid #e9ecef;

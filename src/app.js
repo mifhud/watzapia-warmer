@@ -152,6 +152,22 @@ class WhatsAppAutoWarmer {
             }
         });
 
+        // Direct message route
+        this.app.post('/api/message/send', async (req, res) => {
+            try {
+                const { contactId, phoneNumber, message } = req.body;
+                
+                if (!contactId || !phoneNumber || !message) {
+                    return res.status(400).json({ error: 'Missing required parameters' });
+                }
+                
+                const result = await this.whatsappManager.sendMessage(contactId, phoneNumber, message);
+                res.json({ success: true, result });
+            } catch (error) {
+                res.status(500).json({ error: error.message });
+            }
+        });
+
         // Configuration routes
         this.app.get('/api/config', async (req, res) => {
             try {

@@ -431,7 +431,21 @@ class WhatsAppManager {
                 throw new Error('WhatsApp client not connected for this contact');
             }
 
-            const result = await client.sendMessage(to, message);
+            // Format the phone number correctly for WhatsApp Web API
+            // Remove any non-numeric characters
+            let formattedNumber = to.replace(/\D/g, '');
+            
+            // Make sure the number has the correct format for WhatsApp
+            // If it starts with '0', remove it and make sure country code is present
+            if (formattedNumber.startsWith('0')) {
+                formattedNumber = formattedNumber.substring(1);
+            }
+            
+            // Add '@c.us' suffix which is required by WhatsApp Web API
+            const whatsappId = `${formattedNumber}@c.us`;
+            
+            console.log(`Sending message to formatted number: ${whatsappId}`);
+            const result = await client.sendMessage(whatsappId, message);
             return result;
         } catch (error) {
             console.error(`Failed to send message from ${contactId} to ${to}:`, error);
