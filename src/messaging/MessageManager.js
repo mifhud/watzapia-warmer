@@ -23,9 +23,6 @@ class MessageManager {
         this.evenCount = 0;
         this.oddCount = 0;
         
-        // Track last recipient index for each sender (maps senderId -> lastIndex)
-        this.lastRecipientIndex = {};
-        
         // Tulilut reset scheduler
         this.tulilutResetScheduler = null;
         
@@ -210,7 +207,7 @@ class MessageManager {
             console.log(`Fetching success count for ${contactName} (${phoneNumber})...`);
             
             // Get current date in YYYY-MM-DD format
-            const currentDate = moment().format('YYYY-MM-DD');
+            const currentDate = moment().tz(this.config.timezone).format('YYYY-MM-DD');
             
             // Construct the URL with the current date
             const url = `https://tulilut.xyz/app/history?receiver=&date=${currentDate}&draw=1&columns%5B0%5D%5Bdata%5D=responsive_id&columns%5B0%5D%5Bname%5D=&columns%5B0%5D%5Bsearchable%5D=true&columns%5B0%5D%5Borderable%5D=false&columns%5B0%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B0%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B1%5D%5Bdata%5D=receiver&columns%5B1%5D%5Bname%5D=&columns%5B1%5D%5Bsearchable%5D=true&columns%5B1%5D%5Borderable%5D=true&columns%5B1%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B1%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B2%5D%5Bdata%5D=success&columns%5B2%5D%5Bname%5D=&columns%5B2%5D%5Bsearchable%5D=true&columns%5B2%5D%5Borderable%5D=true&columns%5B2%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B2%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B3%5D%5Bdata%5D=amount&columns%5B3%5D%5Bname%5D=&columns%5B3%5D%5Bsearchable%5D=true&columns%5B3%5D%5Borderable%5D=true&columns%5B3%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B3%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B4%5D%5Bdata%5D=status&columns%5B4%5D%5Bname%5D=&columns%5B4%5D%5Bsearchable%5D=true&columns%5B4%5D%5Borderable%5D=true&columns%5B4%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B4%5D%5Bsearch%5D%5Bregex%5D=false&order%5B0%5D%5Bcolumn%5D=0&order%5B0%5D%5Bdir%5D=asc&start=0&length=20&search%5Bvalue%5D=&search%5Bregex%5D=false&_=${Date.now()}`;
@@ -519,7 +516,7 @@ class MessageManager {
                                 // Update device settings for each contact with incremented success count
                                 for (const contactId of connectedContacts) {
                                     const contact = await this.contactManager.getContact(contactId);
-                                    if (contact) {
+                                    if (contact && contact.push) {
                                         await this.updateTulilutDeviceSettings(
                                             contact.name, 
                                             csrfToken, 
@@ -610,19 +607,45 @@ class MessageManager {
                         return 0;
                     });
                     
-                    // Get the last index used for this sender, or -1 if not used before
-                    const lastIndex = this.lastRecipientIndex[senderId] || -1;
+                    // Get sender contact to determine its phone number
+                    const senderContact = await this.contactManager.getContact(senderId);
+                    if (!senderContact) {
+                        throw new Error(`Sender contact ${senderId} not found`);
+                    }
                     
-                    // Calculate the next index (wrap around if we reach the end)
-                    const nextIndex = (lastIndex + 1) % sortedRecipients.length;
+                    // Find the recipient with the next higher phone number
+                    // For circular pattern: 1 sends to 2, 2 sends to 3, 3 sends to 1
+                    let recipientId = null;
                     
-                    // Update the last index for this sender
-                    this.lastRecipientIndex[senderId] = nextIndex;
+                    // Create a sorted array of all contacts by phone number
+                    const allContacts = [...Object.values(contactMap)];
+                    allContacts.push(senderContact); // Include sender for complete circle
                     
-                    // Select the next ID from the sorted list
-                    const recipientId = sortedRecipients[nextIndex];
+                    // Sort all contacts by phone number
+                    allContacts.sort((a, b) => {
+                        return a.phoneNumber.localeCompare(b.phoneNumber);
+                    });
                     
-                    console.log(`Selected next recipient for ${senderId}: ${recipientId} (index ${nextIndex} of ${sortedRecipients.length})`);
+                    // Find the sender's position in the sorted array
+                    const senderIndex = allContacts.findIndex(contact => contact.id === senderId);
+                    
+                    if (senderIndex === -1) {
+                        throw new Error(`Could not find sender ${senderId} in sorted contacts`);
+                    }
+                    
+                    // Get the next contact in the circle (wrapping around if needed)
+                    const nextContactIndex = (senderIndex + 1) % allContacts.length;
+                    const nextContact = allContacts[nextContactIndex];
+                    
+                    // If the next contact is the sender itself (in case there's only one contact),
+                    // we can't send a message
+                    if (nextContact.id === senderId) {
+                        throw new Error(`Cannot send message to self (only one contact available)`);
+                    }
+                    
+                    recipientId = nextContact.id;
+                    
+                    console.log(`Selected next recipient for ${senderId} (phone: ${senderContact.phoneNumber}): ${recipientId} (phone: ${nextContact.phoneNumber}) - circular pattern`);
                     
                     // Send warming message to individual
                     await this.sendWarmingMessage(senderId, recipientId);

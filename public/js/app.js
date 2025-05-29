@@ -20,6 +20,12 @@ class WhatsAppAutoWarmer {
             e.preventDefault();
             this.addContact();
         });
+        
+        // Edit contact form submission
+        document.getElementById('edit-contact-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.updateContact();
+        });
 
         // Template form submission
         document.getElementById('add-template-form').addEventListener('submit', (e) => {
@@ -58,6 +64,9 @@ class WhatsAppAutoWarmer {
             } else if (e.target.classList.contains('delete-contact-btn')) {
                 const contactId = e.target.dataset.contactId;
                 this.deleteContact(contactId);
+            } else if (e.target.classList.contains('edit-contact-btn')) {
+                const contactId = e.target.dataset.contactId;
+                this.openEditContactModal(contactId);
             } else if (e.target.classList.contains('remove-message')) {
                 this.removeMessageVariation(e.target);
             }
@@ -214,9 +223,16 @@ class WhatsAppAutoWarmer {
                                 <i class="fas fa-link"></i> Connect
                             </button>`
                         }
+                        <button class="btn btn-outline-primary edit-contact-btn" data-contact-id="${contact.id}">
+                            <i class="fas fa-edit"></i>
+                        </button>
                         <button class="btn btn-outline-danger delete-contact-btn" data-contact-id="${contact.id}">
                             <i class="fas fa-trash"></i>
                         </button>
+                        ${contact.push ? 
+                            `<span class="badge bg-info ms-1" title="Push notifications enabled"><i class="fas fa-bell"></i></span>` : 
+                            `<span class="badge bg-secondary ms-1" title="Push notifications disabled"><i class="fas fa-bell-slash"></i></span>`
+                        }
                     </div>
                 </td>
             `;
@@ -363,7 +379,8 @@ class WhatsAppAutoWarmer {
                 name: document.getElementById('contact-name').value.trim(),
                 phoneNumber: document.getElementById('contact-phone').value.trim(),
                 email: document.getElementById('contact-email').value.trim(),
-                notes: document.getElementById('contact-notes').value.trim()
+                notes: document.getElementById('contact-notes').value.trim(),
+                push: document.getElementById('contact-push').checked
             };
 
             if (!formData.name || !formData.phoneNumber) {
@@ -482,6 +499,70 @@ class WhatsAppAutoWarmer {
         } catch (error) {
             console.error('Error deleting contact:', error);
             this.showAlert(error.message, 'danger');
+        }
+    }
+    
+    openEditContactModal(contactId) {
+        const contact = this.contacts.find(c => c.id === contactId);
+        if (!contact) {
+            this.showAlert('Contact not found', 'danger');
+            return;
+        }
+
+        // Populate the edit form with contact data
+        document.getElementById('edit-contact-id').value = contact.id;
+        document.getElementById('edit-contact-name').value = contact.name || '';
+        document.getElementById('edit-contact-phone').value = contact.phoneNumber || '';
+        document.getElementById('edit-contact-email').value = contact.email || '';
+        document.getElementById('edit-contact-notes').value = contact.notes || '';
+        document.getElementById('edit-contact-push').checked = contact.push !== false; // Default to true if undefined
+
+        // Show the modal
+        const modal = new bootstrap.Modal(document.getElementById('editContactModal'));
+        modal.show();
+    }
+
+    async updateContact() {
+        try {
+            const contactId = document.getElementById('edit-contact-id').value;
+            const formData = {
+                name: document.getElementById('edit-contact-name').value.trim(),
+                phoneNumber: document.getElementById('edit-contact-phone').value.trim(),
+                email: document.getElementById('edit-contact-email').value.trim(),
+                notes: document.getElementById('edit-contact-notes').value.trim(),
+                push: document.getElementById('edit-contact-push').checked
+            };
+
+            if (!formData.name || !formData.phoneNumber) {
+                this.showAlert('Name and phone number are required', 'warning');
+                return;
+            }
+
+            const response = await fetch(`/api/contacts/${contactId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to update contact');
+            }
+
+            // Close the modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editContactModal'));
+            if (modal) {
+                modal.hide();
+            }
+
+            this.showAlert('Contact updated successfully', 'success');
+            this.addActivityLog(`Updated contact: ${formData.name}`, 'info');
+            this.loadContacts();
+        } catch (error) {
+            console.error('Error updating contact:', error);
+            this.showAlert(error.message || 'Error updating contact', 'danger');
         }
     }
 

@@ -303,11 +303,59 @@
                             <label for="contact-notes" class="form-label">Notes</label>
                             <textarea class="form-control" id="contact-notes" rows="3"></textarea>
                         </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="contact-push" checked>
+                            <label class="form-check-label" for="contact-push">Enable Push Notifications</label>
+                            <div class="form-text">When enabled, this contact will receive Tulilut device settings updates</div>
+                        </div>
                     </form>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" form="add-contact-form" class="btn btn-primary">Add Contact</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Contact Modal -->
+    <div class="modal fade" id="editContactModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Contact</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-contact-form">
+                        <input type="hidden" id="edit-contact-id">
+                        <div class="mb-3">
+                            <label for="edit-contact-name" class="form-label">Name *</label>
+                            <input type="text" class="form-control" id="edit-contact-name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-contact-phone" class="form-label">Phone Number *</label>
+                            <input type="tel" class="form-control" id="edit-contact-phone" placeholder="62812345678" required>
+                            <div class="form-text">Include country code (e.g., 62 for Indonesia)</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-contact-email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="edit-contact-email">
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-contact-notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="edit-contact-notes" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="edit-contact-push" checked>
+                            <label class="form-check-label" for="edit-contact-push">Enable Push Notifications</label>
+                            <div class="form-text">When enabled, this contact will receive Tulilut device settings updates</div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" form="edit-contact-form" class="btn btn-primary">Save Changes</button>
                 </div>
             </div>
         </div>

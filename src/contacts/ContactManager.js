@@ -68,7 +68,8 @@ class ContactManager {
                 messagesReceived: 0,
                 lastMessageSent: null,
                 lastMessageReceived: null,
-                isActive: true
+                isActive: true,
+                push: contactData.push !== undefined ? contactData.push : true
             };
 
             contacts.push(newContact);
