@@ -41,7 +41,6 @@ class Config {
             // UI settings
             theme: 'light',
             autoRefresh: true,
-            refreshInterval: 30, // seconds
             
             // Notification settings
             enableNotifications: true,
@@ -68,6 +67,10 @@ class Config {
             // Integration settings
             tulilutCookie: "", // Cookie for tulilut.xyz
             tulilutResetTime: "23:59", // Time to reset tulilut device settings to limit 1
+            
+            // Reply settings
+            minReplyDelay: 30, // Minimum reply delay in seconds
+            maxReplyDelay: 60, // Maximum reply delay in seconds
         };
     }
 
@@ -229,7 +232,6 @@ class Config {
             maxReconnectAttempts: { min: 1, max: 10 },
             logRetentionDays: { min: 1, max: 365 },
             maxRequestsPerMinute: { min: 1, max: 1000 },
-            refreshInterval: { min: 5, max: 300 },
             minMessageInterval: { min: 1, max: 60 },
             maxConsecutiveMessages: { min: 1, max: 10 },
             cooldownPeriod: { min: 10, max: 1440 },
@@ -286,6 +288,33 @@ class Config {
                 throw new Error('Tulilut Reset Time must be in HH:MM format');
             }
             validated.tulilutResetTime = updates.tulilutResetTime;
+        }
+        
+        // Validate minReplyDelay
+        if (updates.minReplyDelay !== undefined) {
+            const minReplyDelay = parseInt(updates.minReplyDelay);
+            if (isNaN(minReplyDelay) || minReplyDelay < 1 || minReplyDelay > 720) {
+                throw new Error('Minimum reply delay must be between 1 and 720 seconds');
+            }
+            validated.minReplyDelay = minReplyDelay;
+        }
+        
+        // Validate maxReplyDelay
+        if (updates.maxReplyDelay !== undefined) {
+            const maxReplyDelay = parseInt(updates.maxReplyDelay);
+            if (isNaN(maxReplyDelay) || maxReplyDelay < 1 || maxReplyDelay > 720) {
+                throw new Error('Maximum reply delay must be between 1 and 720 seconds');
+            }
+            validated.maxReplyDelay = maxReplyDelay;
+        }
+        
+        // Validate min and max reply delay relationship
+        if (updates.minReplyDelay !== undefined && updates.maxReplyDelay !== undefined) {
+            const minReplyDelay = parseInt(updates.minReplyDelay);
+            const maxReplyDelay = parseInt(updates.maxReplyDelay);
+            if (minReplyDelay > maxReplyDelay) {
+                throw new Error('Minimum reply delay cannot be greater than maximum reply delay');
+            }
         }
         
         return validated;

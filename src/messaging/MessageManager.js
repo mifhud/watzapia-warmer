@@ -836,9 +836,12 @@ class MessageManager {
             if (await this.hasReachedDailyLimit(recipientId)) {
                 console.log(`Contact ${recipientId} has reached daily message limit, skipping reply`);
             } else {
-                // Send reply message from recipient to sender after a random delay (30-60 seconds)
-                const replyDelaySeconds = Math.floor(Math.random() * 31) + 30; // Random delay between 30-60 seconds
-                console.log(`Scheduling reply message in ${replyDelaySeconds} seconds`);
+                // Send reply message from recipient to sender after a random delay
+                const minDelay = this.config.minReplyDelay || 30; // Default to 30 seconds if not configured
+                const maxDelay = this.config.maxReplyDelay || 60; // Default to 60 seconds if not configured
+                const delayRange = maxDelay - minDelay;
+                const replyDelaySeconds = Math.floor(Math.random() * (delayRange + 1)) + minDelay;
+                console.log(`Scheduling reply message in ${replyDelaySeconds} seconds (range: ${minDelay}-${maxDelay}s)`);
                 
                 setTimeout(async () => {
                     // Check if we're still within working hours when it's time to send the reply
