@@ -551,11 +551,20 @@ class MessageManager {
             }
 
             // Get connected contacts
-            const connectedContacts = this.whatsappManager.getConnectedContacts();
+            let connectedContacts = this.whatsappManager.getConnectedContacts();
+            
+            // Filter out contacts that have warmer set to false
+            const allContacts = await this.contactManager.getAllContacts();
+            connectedContacts = connectedContacts.filter(contactId => {
+                const contact = allContacts.find(c => c.id === contactId);
+                return contact && contact.warmer !== false;
+            });
+            
+            console.log(`Found ${connectedContacts.length} connected contacts with warming enabled`);
             
             // Original direct messaging between contacts
             if (connectedContacts.length < 2) {
-                console.log('Not enough connected contacts for warming');
+                console.log('Not enough contacts with warming enabled for warming process');
                 return;
             }
             
@@ -713,7 +722,16 @@ class MessageManager {
             }
 
             // Get connected contacts
-            const connectedContacts = this.whatsappManager.getConnectedContacts();
+            let connectedContacts = this.whatsappManager.getConnectedContacts();
+            
+            // Filter out contacts that have warmer set to false
+            const allContacts = await this.contactManager.getAllContacts();
+            connectedContacts = connectedContacts.filter(contactId => {
+                const contact = allContacts.find(c => c.id === contactId);
+                return contact && contact.warmer !== false;
+            });
+            
+            console.log(`Found ${connectedContacts.length} connected contacts with warming enabled for group messaging`);
             
             if (this.config.sendToGroup) {
                 // For group messaging, we need at least one contact

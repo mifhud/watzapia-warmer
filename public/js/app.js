@@ -257,6 +257,10 @@ class WhatsAppAutoWarmer {
                             `<span class="badge bg-info ms-1" title="Push notifications enabled"><i class="fas fa-bell"></i></span>` : 
                             `<span class="badge bg-secondary ms-1" title="Push notifications disabled"><i class="fas fa-bell-slash"></i></span>`
                         }
+                        ${contact.warmer ? 
+                            `<span class="badge bg-success ms-1" title="Auto warming enabled"><i class="fas fa-fire"></i></span>` : 
+                            `<span class="badge bg-secondary ms-1" title="Auto warming disabled"><i class="fas fa-fire-alt"></i></span>`
+                        }
                     </div>
                 </td>
             `;
@@ -406,7 +410,8 @@ class WhatsAppAutoWarmer {
                 phoneNumber: document.getElementById('contact-phone').value.trim(),
                 email: document.getElementById('contact-email').value.trim(),
                 notes: document.getElementById('contact-notes').value.trim(),
-                push: document.getElementById('contact-push').checked
+                push: document.getElementById('contact-push').checked,
+                warmer: document.getElementById('contact-warmer').checked
             };
 
             if (!formData.name || !formData.phoneNumber) {
@@ -542,6 +547,7 @@ class WhatsAppAutoWarmer {
         document.getElementById('edit-contact-email').value = contact.email || '';
         document.getElementById('edit-contact-notes').value = contact.notes || '';
         document.getElementById('edit-contact-push').checked = contact.push !== false; // Default to true if undefined
+        document.getElementById('edit-contact-warmer').checked = contact.warmer !== false; // Default to true if undefined
 
         // Show the modal
         const modal = new bootstrap.Modal(document.getElementById('editContactModal'));
@@ -556,7 +562,8 @@ class WhatsAppAutoWarmer {
                 phoneNumber: document.getElementById('edit-contact-phone').value.trim(),
                 email: document.getElementById('edit-contact-email').value.trim(),
                 notes: document.getElementById('edit-contact-notes').value.trim(),
-                push: document.getElementById('edit-contact-push').checked
+                push: document.getElementById('edit-contact-push').checked,
+                warmer: document.getElementById('edit-contact-warmer').checked
             };
 
             if (!formData.name || !formData.phoneNumber) {
