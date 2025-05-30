@@ -11,9 +11,6 @@ class Config {
             maxWarmingInterval: 45, // seconds
             timezone: 'Asia/Jakarta',
             maxMessagesPerDay: 50,
-            // DEPRECATED: These settings are now stored per contact
-            timeoutSeconds: 60, // seconds to pause if max message limit is reached (deprecated - moved to contact level)
-            maxMessageTimeout: 5, // max messages per timeout period (deprecated - moved to contact level)
 
             // Working hours
             workingHours: {
@@ -166,25 +163,6 @@ class Config {
             }
             validated.maxMessagesPerDay = maxMessages;
         }
-        
-        // Validate timeout seconds
-        if (updates.timeoutSeconds !== undefined) {
-            const timeoutSeconds = parseInt(updates.timeoutSeconds);
-            if (isNaN(timeoutSeconds) || timeoutSeconds < 1 || timeoutSeconds > 3600) {
-                throw new Error('Timeout seconds must be between 1 and 3600');
-            }
-            validated.timeoutSeconds = timeoutSeconds;
-        }
-        
-        // Validate max message timeout
-        if (updates.maxMessageTimeout !== undefined) {
-            const maxMessageTimeout = parseInt(updates.maxMessageTimeout);
-            if (isNaN(maxMessageTimeout) || maxMessageTimeout < 1 || maxMessageTimeout > 100) {
-                throw new Error('Max message timeout must be between 1 and 100');
-            }
-            validated.maxMessageTimeout = maxMessageTimeout;
-        }
-        
         
         // Validate working hours
         if (updates.workingHours !== undefined) {
@@ -435,18 +413,6 @@ class Config {
                 min: 1,
                 max: 9999999999,
                 description: 'Maximum messages per contact per day'
-            },
-            timeoutSeconds: {
-                type: 'number',
-                min: 1,
-                max: 3600,
-                description: 'Seconds to pause if max message limit is reached'
-            },
-            maxMessageTimeout: {
-                type: 'number',
-                min: 1,
-                max: 100,
-                description: 'Maximum messages allowed per timeout period'
             },
 
             workingHours: {
