@@ -312,8 +312,6 @@ class WhatsAppAutoWarmer {
         document.getElementById('min-warming-interval').value = this.config.minWarmingInterval || 15;
         document.getElementById('max-warming-interval').value = this.config.maxWarmingInterval || 45;
         document.getElementById('max-messages').value = this.config.maxMessagesPerDay || 50;
-        document.getElementById('timeout-seconds').value = this.config.timeoutSeconds || 60;
-        document.getElementById('max-message-timeout').value = this.config.maxMessageTimeout || 5;
         document.getElementById('targetGroupName1').value = this.config.targetGroupName1 || '';
         document.getElementById('targetGroupName2').value = this.config.targetGroupName2 || '';
         document.getElementById('tulilutCookie').value = this.config.tulilutCookie || '';
@@ -411,7 +409,9 @@ class WhatsAppAutoWarmer {
                 email: document.getElementById('contact-email').value.trim(),
                 notes: document.getElementById('contact-notes').value.trim(),
                 push: document.getElementById('contact-push').checked,
-                warmer: document.getElementById('contact-warmer').checked
+                warmer: document.getElementById('contact-warmer').checked,
+                timeoutSeconds: parseInt(document.getElementById('contact-timeout-seconds').value),
+                maxMessageTimeout: parseInt(document.getElementById('contact-max-message-timeout').value)
             };
 
             if (!formData.name || !formData.phoneNumber) {
@@ -546,6 +546,8 @@ class WhatsAppAutoWarmer {
         document.getElementById('edit-contact-phone').value = contact.phoneNumber || '';
         document.getElementById('edit-contact-email').value = contact.email || '';
         document.getElementById('edit-contact-notes').value = contact.notes || '';
+        document.getElementById('edit-contact-timeout-seconds').value = contact.timeoutSeconds || 60;
+        document.getElementById('edit-contact-max-message-timeout').value = contact.maxMessageTimeout || 5;
         document.getElementById('edit-contact-push').checked = contact.push !== false; // Default to true if undefined
         document.getElementById('edit-contact-warmer').checked = contact.warmer !== false; // Default to true if undefined
 
@@ -563,7 +565,9 @@ class WhatsAppAutoWarmer {
                 email: document.getElementById('edit-contact-email').value.trim(),
                 notes: document.getElementById('edit-contact-notes').value.trim(),
                 push: document.getElementById('edit-contact-push').checked,
-                warmer: document.getElementById('edit-contact-warmer').checked
+                warmer: document.getElementById('edit-contact-warmer').checked,
+                timeoutSeconds: parseInt(document.getElementById('edit-contact-timeout-seconds').value),
+                maxMessageTimeout: parseInt(document.getElementById('edit-contact-max-message-timeout').value)
             };
 
             if (!formData.name || !formData.phoneNumber) {
@@ -790,8 +794,6 @@ class WhatsAppAutoWarmer {
                 minWarmingInterval: parseInt(document.getElementById('min-warming-interval').value),
                 maxWarmingInterval: parseInt(document.getElementById('max-warming-interval').value),
                 maxMessagesPerDay: parseInt(document.getElementById('max-messages').value),
-                timeoutSeconds: parseInt(document.getElementById('timeout-seconds').value),
-                maxMessageTimeout: parseInt(document.getElementById('max-message-timeout').value),
                 targetGroupName1: document.getElementById('targetGroupName1').value,
                 targetGroupName2: document.getElementById('targetGroupName2').value,
                 tulilutCookie: document.getElementById('tulilutCookie').value,

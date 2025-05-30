@@ -14,9 +14,9 @@ class MessageManager {
         this.messageQueue = [];
         this.config = null;
         
-        // Message timeout tracking
-        this.messagesSentInTimeout = 0;
-        this.isInTimeoutPause = false;
+        // Per-contact message timeout tracking
+        this.contactMessageCounts = {};
+        this.contactTimeoutTimers = {};
         
         // Tracking for balanced odd/even distribution
         this.lastRandomWasEven = null;
@@ -395,8 +395,14 @@ class MessageManager {
             }
 
             this.isWarmerActive = true;
-            this.messagesSentInTimeout = 0;
-            this.isInTimeoutPause = false;
+            // Reset per-contact message tracking
+            this.contactMessageCounts = {};
+            
+            // Clear any existing timeout timers
+            Object.keys(this.contactTimeoutTimers).forEach(contactId => {
+                clearTimeout(this.contactTimeoutTimers[contactId]);
+            });
+            this.contactTimeoutTimers = {};
             
             // Start the warming process
             this.scheduleNextMessage();
@@ -447,29 +453,59 @@ class MessageManager {
         }
     }
 
+    /**
+     * Checks if a contact has reached their message timeout limit
+     * @param {string} contactId - The ID of the contact to check
+     * @returns {boolean} - True if the contact is in timeout, false otherwise
+     */
+    isContactInTimeout(contactId) {
+        return !!this.contactTimeoutTimers[contactId];
+    }
+    
+    /**
+     * Increments the message count for a contact and checks if they need to enter timeout
+     * @param {string} contactId - The ID of the contact
+     * @param {Object} contact - The contact object
+     * @returns {boolean} - True if the contact can send messages, false if in timeout
+     */
+    async trackContactMessage(contactId, contact) {
+        // If contact is already in timeout, they can't send messages
+        if (this.isContactInTimeout(contactId)) {
+            return false;
+        }
+        
+        // Initialize message count if not exists
+        if (!this.contactMessageCounts[contactId]) {
+            this.contactMessageCounts[contactId] = 0;
+        }
+        
+        // Increment message count
+        this.contactMessageCounts[contactId]++;
+        
+        // Get contact's timeout settings (or use defaults)
+        const maxMessageTimeout = contact.maxMessageTimeout || 5;
+        const timeoutSeconds = contact.timeoutSeconds || 60;
+        
+        // Check if contact has reached their message limit
+        if (this.contactMessageCounts[contactId] >= maxMessageTimeout) {
+            console.log(`Contact ${contact.name} reached max messages (${this.contactMessageCounts[contactId]}/${maxMessageTimeout}). Pausing for ${timeoutSeconds} seconds.`);
+            
+            // Set timeout for this contact
+            this.contactTimeoutTimers[contactId] = setTimeout(() => {
+                console.log(`Timeout completed for contact ${contact.name}. Resetting message counter.`);
+                this.contactMessageCounts[contactId] = 0;
+                delete this.contactTimeoutTimers[contactId];
+            }, timeoutSeconds * 1000);
+            
+            return false; // Contact is now in timeout
+        }
+        
+        return true; // Contact can send messages
+    }
+    
     scheduleNextMessage() {
         if (!this.isWarmerActive) {
             return;
-        }
-
-        // Get timeout configuration
-        const timeoutSeconds = this.config.timeoutSeconds || 60;
-        const maxMessageTimeout = this.config.maxMessageTimeout || 5;
-        
-        // Check if we need to pause due to reaching message limit
-        if (this.messagesSentInTimeout >= maxMessageTimeout) {
-            console.log(`Reached max messages per timeout (${this.messagesSentInTimeout}/${maxMessageTimeout}). Pausing for ${timeoutSeconds} seconds.`);
-            this.isInTimeoutPause = true;
-            
-            // Set a timeout to resume after the pause
-            setTimeout(() => {
-                console.log(`Timeout pause completed. Resetting message counter.`);
-                this.messagesSentInTimeout = 0;
-                this.isInTimeoutPause = false;
-                this.scheduleNextMessage(); // Resume scheduling
-            }, timeoutSeconds * 1000);
-            
-            return; // Exit without scheduling next message
         }
         
         // Get min and max warming intervals
@@ -571,15 +607,19 @@ class MessageManager {
             // Track if at least one message was sent
             let messageSent = false;
             
-            // Get timeout configuration
-            const maxMessageTimeout = this.config.maxMessageTimeout || 5;
-            
             // Try to send a message from each connected contact
             for (const senderId of connectedContacts) {
-                // Check if we've reached the max messages per timeout
-                if (this.messagesSentInTimeout >= maxMessageTimeout) {
-                    console.log(`Reached max messages per timeout (${this.messagesSentInTimeout}/${maxMessageTimeout}). Stopping this warming cycle.`);
-                    break;
+                // Get the contact object
+                const senderContact = await this.contactManager.getContact(senderId);
+                if (!senderContact) {
+                    console.log(`Contact with ID ${senderId} not found, skipping`);
+                    continue;
+                }
+                
+                // Check if this contact is in timeout
+                if (this.isContactInTimeout(senderId)) {
+                    console.log(`Contact ${senderContact.name} is in timeout, skipping`);
+                    continue;
                 }
                 
                 try {
@@ -656,12 +696,17 @@ class MessageManager {
                     
                     console.log(`Selected next recipient for ${senderId} (phone: ${senderContact.phoneNumber}): ${recipientId} (phone: ${nextContact.phoneNumber}) - circular pattern`);
                     
+                    // Track this message for the contact's timeout
+                    const canSendMessage = await this.trackContactMessage(senderId, senderContact);
+                    
+                    if (!canSendMessage) {
+                        console.log(`Contact ${senderContact.name} has reached message limit, skipping`);
+                        continue;
+                    }
+                    
                     // Send warming message to individual
                     await this.sendWarmingMessage(senderId, recipientId);
                     messageSent = true;
-                    
-                    // Increment message counter for timeout tracking
-                    this.messagesSentInTimeout++;
                     
                     // Log success
                     console.log(`Successfully sent warming message from contact ${senderId}`);
@@ -743,15 +788,19 @@ class MessageManager {
                 // Track if at least one message was sent
                 let messageSent = false;
                 
-                // Get timeout configuration
-                const maxMessageTimeout = this.config.maxMessageTimeout || 5;
-                
                 // Try to send a message from each connected contact
                 for (const senderId of connectedContacts) {
-                    // Check if we've reached the max messages per timeout
-                    if (this.messagesSentInTimeout >= maxMessageTimeout) {
-                        console.log(`Reached max messages per timeout (${this.messagesSentInTimeout}/${maxMessageTimeout}). Stopping this warming cycle.`);
-                        break;
+                    // Get the contact object
+                    const senderContact = await this.contactManager.getContact(senderId);
+                    if (!senderContact) {
+                        console.log(`Contact with ID ${senderId} not found, skipping`);
+                        continue;
+                    }
+                    
+                    // Check if this contact is in timeout
+                    if (this.isContactInTimeout(senderId)) {
+                        console.log(`Contact ${senderContact.name} is in timeout, skipping`);
+                        continue;
                     }
                     
                     try {
@@ -766,19 +815,31 @@ class MessageManager {
                         if (randomValBetween1To5 % 2 === 0) {
                             // Send warming message to first group
                             if (this.config.targetGroupName1 && this.config.targetGroupName1.trim() !== '') {
+                                // Track this message for the contact's timeout
+                                const canSendMessage = await this.trackContactMessage(senderId, senderContact);
+                                
+                                if (!canSendMessage) {
+                                    console.log(`Contact ${senderContact.name} has reached message limit, skipping`);
+                                    continue;
+                                }
+                                
                                 await this.sendWarmingMessageToGroup(senderId, this.config.targetGroupName1);
                                 messageSent = true;
-                                // Increment message counter for timeout tracking
-                                this.messagesSentInTimeout++;
                                 console.log(`Successfully sent group warming message from contact ${senderId} to group ${this.config.targetGroupName1}`);
                             }
                         } else {
                             // Send warming message to second group if configured
                             if (this.config.targetGroupName2 && this.config.targetGroupName2.trim() !== '') {
+                                // Track this message for the contact's timeout
+                                const canSendMessage = await this.trackContactMessage(senderId, senderContact);
+                                
+                                if (!canSendMessage) {
+                                    console.log(`Contact ${senderContact.name} has reached message limit, skipping`);
+                                    continue;
+                                }
+                                
                                 await this.sendWarmingMessageToGroup(senderId, this.config.targetGroupName2);
                                 messageSent = true;
-                                // Increment message counter for timeout tracking
-                                this.messagesSentInTimeout++;
                                 console.log(`Successfully sent group warming message from contact ${senderId} to group ${this.config.targetGroupName2}`);
                             }
                         }

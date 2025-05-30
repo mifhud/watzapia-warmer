@@ -11,8 +11,9 @@ class Config {
             maxWarmingInterval: 45, // seconds
             timezone: 'Asia/Jakarta',
             maxMessagesPerDay: 50,
-            timeoutSeconds: 60, // seconds to pause if max message limit is reached
-            maxMessageTimeout: 5, // max messages per timeout period
+            // DEPRECATED: These settings are now stored per contact
+            timeoutSeconds: 60, // seconds to pause if max message limit is reached (deprecated - moved to contact level)
+            maxMessageTimeout: 5, // max messages per timeout period (deprecated - moved to contact level)
 
             // Working hours
             workingHours: {

@@ -70,7 +70,9 @@ class ContactManager {
                 lastMessageReceived: null,
                 isActive: true,
                 push: contactData.push !== undefined ? contactData.push : true,
-                warmer: contactData.warmer !== undefined ? contactData.warmer : true
+                warmer: contactData.warmer !== undefined ? contactData.warmer : true,
+                timeoutSeconds: contactData.timeoutSeconds !== undefined ? parseInt(contactData.timeoutSeconds) : 60,
+                maxMessageTimeout: contactData.maxMessageTimeout !== undefined ? parseInt(contactData.maxMessageTimeout) : 5
             };
 
             contacts.push(newContact);
