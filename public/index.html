@@ -354,6 +354,11 @@
                             <input type="number" class="form-control" id="contact-max-message-timeout" min="1" max="100" value="5">
                             <div class="form-text">Maximum messages allowed per timeout period</div>
                         </div>
+                        <div class="mb-3">
+                            <label for="contact-max-messages-per-day" class="form-label">Max Messages Per Day</label>
+                            <input type="number" class="form-control" id="contact-max-messages-per-day" min="0" max="1000" value="0">
+                            <div class="form-text">Maximum messages allowed per day (0 = unlimited)</div>
+                        </div>
                         <div class="mb-3 form-check">
                             <input type="checkbox" class="form-check-input" id="contact-push" checked>
                             <label class="form-check-label" for="contact-push">Enable Push Notifications</label>
@@ -411,6 +416,11 @@
                             <label for="edit-contact-max-message-timeout" class="form-label">Max Message Timeout</label>
                             <input type="number" class="form-control" id="edit-contact-max-message-timeout" min="1" max="100" value="5">
                             <div class="form-text">Maximum messages allowed per timeout period</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-contact-max-messages-per-day" class="form-label">Max Messages Per Day</label>
+                            <input type="number" class="form-control" id="edit-contact-max-messages-per-day" min="0" max="1000" value="0">
+                            <div class="form-text">Maximum messages allowed per day (0 = unlimited)</div>
                         </div>
                         <div class="mb-3 form-check">
                             <input type="checkbox" class="form-check-input" id="edit-contact-push" checked>

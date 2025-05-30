@@ -124,7 +124,8 @@ class MessageManager {
                         contact.name, 
                         csrfToken, 
                         this.config.tulilutCookie,
-                        null // This will force limit to 1
+                        null, // This will force limit to 1
+                        contact // Pass the contact object to check maxMessagesPerDay
                     );
                 }
             }
@@ -261,32 +262,47 @@ class MessageManager {
     /**
      * Updates device settings on tulilut.xyz
      * @param {string} contactName - The contact name to update settings for
-     * @param {string} phoneNumber - The phone number to match in the receiver field
      * @param {string} csrfToken - The CSRF token for the request
      * @param {string} cookie - The cookie value for authentication
+     * @param {string} phoneNumber - The phone number to match in the receiver field
+     * @param {object} contact - The contact object (optional)
      * @returns {Promise<boolean>} - True if successful, false otherwise
      */
-    async updateTulilutDeviceSettings(contactName, csrfToken, cookie, phoneNumber = null) {
+    async updateTulilutDeviceSettings(contactName, csrfToken, cookie, phoneNumber = null, contact = null) {
         try {
-            console.log(`Updating tulilut.xyz device settings for ${contactName}...`);
-            
-            const url = 'https://tulilut.xyz/app/device/device-settings-update';
-            
-            const payload = new URLSearchParams();
-            payload.append('id', contactName);
+            console.log(`Checking tulilut.xyz device settings for ${contactName}...`);
             
             // Default limit value
             let limitValue = 1;
+            let successCount = 0;
             
-            // If phone number is provided and not null, try to fetch the current success count
+            // If phone number is provided and not null, check the current success count
             if (phoneNumber && phoneNumber !== null && cookie) {
-                const successCount = await this.fetchTulilutSuccessCount(contactName, phoneNumber, cookie);
+                successCount = await this.fetchTulilutSuccessCount(contactName, phoneNumber, cookie);
+                
+                // Check if the contact has a daily message limit
+                if (contact && contact.maxMessagesPerDay > 0) {
+                    if (successCount >= contact.maxMessagesPerDay) {
+                        console.log(`Contact ${contactName} has reached daily limit of ${contact.maxMessagesPerDay} messages (current: ${successCount}). Skipping device settings update.`);
+                        return false;
+                    } else {
+                        console.log(`Contact ${contactName} has sent ${successCount}/${contact.maxMessagesPerDay} messages today.`);
+                    }
+                }
+                
                 // Increment the success count by 1 (minimum 1)
                 limitValue = Math.max(1, successCount + 1);
                 console.log(`Setting limit value to ${limitValue} based on current success count of ${successCount}`);
             } else {
                 console.log(`Setting limit value to 1 for ${contactName} (forced reset)`);
             }
+            
+            // Proceed with the update
+            console.log(`Updating tulilut.xyz device settings for ${contactName}...`);
+            
+            const url = 'https://tulilut.xyz/app/device/device-settings-update';
+            const payload = new URLSearchParams();
+            payload.append('id', contactName);
             
             // Set all limits to the calculated value and active
             for (let i = 1; i <= 7; i++) {
@@ -385,7 +401,8 @@ class MessageManager {
                                     contact.name, 
                                     csrfToken, 
                                     this.config.tulilutCookie,
-                                    contact.phoneNumber
+                                    contact.phoneNumber,
+                                    contact // Pass the contact object to check maxMessagesPerDay
                                 );
                             }
                         }
@@ -571,7 +588,8 @@ class MessageManager {
                                             contact.name, 
                                             csrfToken, 
                                             this.config.tulilutCookie,
-                                            contact.phoneNumber
+                                            contact.phoneNumber,
+                                            contact // Pass the contact object to check maxMessagesPerDay
                                         );
                                     }
                                 }
