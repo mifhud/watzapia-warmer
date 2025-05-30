@@ -110,6 +110,13 @@ class MessageManager {
             
             // Update device settings for each contact with limit 1
             for (const contactId of connectedContacts) {
+                // Skip contacts that are in timeout
+                if (this.isContactInTimeout(contactId)) {
+                    const contact = await this.contactManager.getContact(contactId);
+                    console.log(`Contact ${contact ? contact.name : contactId} is in timeout, skipping Tulilut device settings reset`);
+                    continue;
+                }
+                
                 const contact = await this.contactManager.getContact(contactId);
                 if (contact) {
                     // Force limit to 1 by passing null for phoneNumber
@@ -551,6 +558,13 @@ class MessageManager {
                                 
                                 // Update device settings for each contact with incremented success count
                                 for (const contactId of connectedContacts) {
+                                    // Skip contacts that are in timeout
+                                    if (this.isContactInTimeout(contactId)) {
+                                        const contact = await this.contactManager.getContact(contactId);
+                                        console.log(`Contact ${contact ? contact.name : contactId} is in timeout, skipping Tulilut device settings update`);
+                                        continue;
+                                    }
+                                    
                                     const contact = await this.contactManager.getContact(contactId);
                                     if (contact && contact.push) {
                                         await this.updateTulilutDeviceSettings(
