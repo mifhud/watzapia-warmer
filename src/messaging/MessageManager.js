@@ -278,8 +278,54 @@ class MessageManager {
             if (phoneNumber && phoneNumber !== null && cookie) {
                 successCount = await this.fetchTulilutSuccessCount(contactName, phoneNumber, cookie);
                 
-                // Check if the contact has a daily message limit
-                if (contact && contact.maxMessagesPerDay > 0) {
+                // Check if the contact has daily message limits configured
+                if (contact && contact.dailyMessageLimits && contact.dailyMessageLimits.length > 0) {
+                    // Get the current active limit
+                    const currentLimitIndex = contact.currentDailyLimitIndex || 0;
+                    const currentLimit = contact.dailyMessageLimits[currentLimitIndex];
+                    
+                    // If the current limit is defined and greater than 0, check if it's been exceeded
+                    if (currentLimit && currentLimit.limit > 0) {
+                        if (successCount >= currentLimit.limit) {
+                            console.log(`Contact ${contactName} has reached daily limit ${currentLimitIndex + 1} of ${currentLimit.limit} messages (current: ${successCount}).`);
+                            
+                            // Check if there are more limits available
+                            if (currentLimitIndex < contact.dailyMessageLimits.length - 1) {
+                                console.log(`Moving to next daily limit after timeout of ${currentLimit.timeoutMinutes} minutes.`);
+                                
+                                // Schedule the advancement to the next limit
+                                setTimeout(async () => {
+                                    try {
+                                        // Get the contact ID from the name
+                                        const contacts = await this.contactManager.getAllContacts();
+                                        const matchingContact = contacts.find(c => c.name === contactName);
+                                        
+                                        if (matchingContact) {
+                                            // Update the contact's current limit index
+                                            await this.contactManager.updateContact(matchingContact.id, {
+                                                currentDailyLimitIndex: currentLimitIndex + 1
+                                            });
+                                            
+                                            console.log(`Advanced ${contactName} to daily limit ${currentLimitIndex + 2}`);
+                                        }
+                                    } catch (error) {
+                                        console.error(`Error advancing daily limit for ${contactName}:`, error);
+                                    }
+                                }, currentLimit.timeoutMinutes * 60 * 1000); // Convert minutes to milliseconds
+                                
+                                // Skip device settings update for now
+                                return false;
+                            } else {
+                                console.log(`All daily limits have been reached for ${contactName}. Skipping device settings update.`);
+                                return false;
+                            }
+                        } else {
+                            console.log(`Contact ${contactName} has sent ${successCount}/${currentLimit.limit} messages for limit ${currentLimitIndex + 1}.`);
+                        }
+                    }
+                }
+                // For backward compatibility, also check the legacy maxMessagesPerDay
+                else if (contact && contact.maxMessagesPerDay > 0) {
                     if (successCount >= contact.maxMessagesPerDay) {
                         console.log(`Contact ${contactName} has reached daily limit of ${contact.maxMessagesPerDay} messages (current: ${successCount}). Skipping device settings update.`);
                         return false;

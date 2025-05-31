@@ -144,7 +144,6 @@
                             <small class="text-muted">
                                 <div>Interval range: <span id="warmer-min-interval">15</span>-<span id="warmer-max-interval">45</span> seconds</div>
                                 <div>Connected: <span id="warmer-connected">0</span> contacts</div>
-                                <div>Next message in: <span id="next-message-time">--</span></div>
                             </small>
                         </div>
                     </div>
@@ -352,9 +351,46 @@
                             <div class="form-text">Maximum messages allowed per timeout period</div>
                         </div>
                         <div class="mb-3">
-                            <label for="contact-max-messages-per-day" class="form-label">Max Messages Per Day</label>
+                            <label for="contact-max-messages-per-day" class="form-label">Max Messages Per Day (Legacy)</label>
                             <input type="number" class="form-control" id="contact-max-messages-per-day" min="0" max="1000" value="0">
-                            <div class="form-text">Maximum messages allowed per day (0 = unlimited)</div>
+                            <div class="form-text">Legacy setting - use multiple limits below instead</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Multiple Daily Message Limits</label>
+                            <div class="card">
+                                <div class="card-body p-3">
+                                    <p class="text-muted small mb-2">Configure multiple daily message limits with timeouts. When a limit is reached, the system will wait for the specified timeout before moving to the next limit.</p>
+                                    
+                                    <div id="daily-limits-container">
+                                        <!-- Template for a single limit row -->
+                                        <div class="daily-limit-row mb-2 row">
+                                            <div class="col-5">
+                                                <div class="input-group input-group-sm">
+                                                    <span class="input-group-text">Limit 1</span>
+                                                    <input type="number" class="form-control daily-limit-value" min="0" max="1000" value="0" placeholder="Limit">
+                                                </div>
+                                            </div>
+                                            <div class="col-5">
+                                                <div class="input-group input-group-sm">
+                                                    <input type="number" class="form-control daily-limit-timeout" min="0" max="1440" value="0" placeholder="Timeout">
+                                                    <span class="input-group-text">minutes</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-2">
+                                                <button type="button" class="btn btn-sm btn-outline-danger remove-limit-btn" disabled>
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add-daily-limit-btn">
+                                        <i class="fas fa-plus me-1"></i>Add Another Limit
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="form-text">Set to 0 for unlimited messages. Each limit activates after the previous one is reached.</div>
                         </div>
                         <div class="mb-3 form-check">
                             <input type="checkbox" class="form-check-input" id="contact-push" checked>
@@ -415,9 +451,46 @@
                             <div class="form-text">Maximum messages allowed per timeout period</div>
                         </div>
                         <div class="mb-3">
-                            <label for="edit-contact-max-messages-per-day" class="form-label">Max Messages Per Day</label>
+                            <label for="edit-contact-max-messages-per-day" class="form-label">Max Messages Per Day (Legacy)</label>
                             <input type="number" class="form-control" id="edit-contact-max-messages-per-day" min="0" max="1000" value="0">
-                            <div class="form-text">Maximum messages allowed per day (0 = unlimited)</div>
+                            <div class="form-text">Legacy setting - use multiple limits below instead</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Multiple Daily Message Limits</label>
+                            <div class="card">
+                                <div class="card-body p-3">
+                                    <p class="text-muted small mb-2">Configure multiple daily message limits with timeouts. When a limit is reached, the system will wait for the specified timeout before moving to the next limit.</p>
+                                    
+                                    <div id="edit-daily-limits-container">
+                                        <!-- Template for a single limit row -->
+                                        <div class="daily-limit-row mb-2 row">
+                                            <div class="col-5">
+                                                <div class="input-group input-group-sm">
+                                                    <span class="input-group-text">Limit 1</span>
+                                                    <input type="number" class="form-control daily-limit-value" min="0" max="1000" value="0" placeholder="Limit">
+                                                </div>
+                                            </div>
+                                            <div class="col-5">
+                                                <div class="input-group input-group-sm">
+                                                    <input type="number" class="form-control daily-limit-timeout" min="0" max="1440" value="0" placeholder="Timeout">
+                                                    <span class="input-group-text">minutes</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-2">
+                                                <button type="button" class="btn btn-sm btn-outline-danger remove-limit-btn" disabled>
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="edit-add-daily-limit-btn">
+                                        <i class="fas fa-plus me-1"></i>Add Another Limit
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="form-text">Set to 0 for unlimited messages. Each limit activates after the previous one is reached.</div>
                         </div>
                         <div class="mb-3 form-check">
                             <input type="checkbox" class="form-check-input" id="edit-contact-push" checked>

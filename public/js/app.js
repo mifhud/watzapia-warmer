@@ -26,6 +26,31 @@ class WhatsAppAutoWarmer {
             e.preventDefault();
             this.updateContact();
         });
+        
+        // Daily limit buttons for add contact form
+        document.getElementById('add-daily-limit-btn').addEventListener('click', () => {
+            this.addDailyLimitRow('daily-limits-container');
+        });
+        
+        // Daily limit buttons for edit contact form
+        document.getElementById('edit-add-daily-limit-btn').addEventListener('click', () => {
+            this.addDailyLimitRow('edit-daily-limits-container');
+        });
+        
+        // Set up event delegation for remove limit buttons
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.remove-limit-btn')) {
+                const button = e.target.closest('.remove-limit-btn');
+                const row = button.closest('.daily-limit-row');
+                const container = row.closest('[id$=daily-limits-container]');
+                
+                // Remove the row
+                row.remove();
+                
+                // Update the numbering
+                this.updateDailyLimitRowNumbers(container.id);
+            }
+        });
 
         // Template form submission
         document.getElementById('add-template-form').addEventListener('submit', (e) => {
@@ -402,6 +427,20 @@ class WhatsAppAutoWarmer {
     // Contact Management Methods
     async addContact() {
         try {
+            // Collect daily message limits
+            const dailyLimits = [];
+            const limitRows = document.querySelectorAll('#daily-limits-container .daily-limit-row');
+            
+            limitRows.forEach((row, index) => {
+                const limitValue = parseInt(row.querySelector('.daily-limit-value').value) || 0;
+                const timeoutValue = parseInt(row.querySelector('.daily-limit-timeout').value) || 0;
+                
+                dailyLimits.push({
+                    limit: limitValue,
+                    timeoutMinutes: timeoutValue
+                });
+            });
+            
             const formData = {
                 name: document.getElementById('contact-name').value.trim(),
                 phoneNumber: document.getElementById('contact-phone').value.trim(),
@@ -411,7 +450,9 @@ class WhatsAppAutoWarmer {
                 warmer: document.getElementById('contact-warmer').checked,
                 timeoutSeconds: parseInt(document.getElementById('contact-timeout-seconds').value),
                 maxMessageTimeout: parseInt(document.getElementById('contact-max-message-timeout').value),
-                maxMessagesPerDay: parseInt(document.getElementById('contact-max-messages-per-day').value)
+                maxMessagesPerDay: parseInt(document.getElementById('contact-max-messages-per-day').value),
+                dailyMessageLimits: dailyLimits,
+                currentDailyLimitIndex: 0
             };
 
             if (!formData.name || !formData.phoneNumber) {
@@ -551,6 +592,44 @@ class WhatsAppAutoWarmer {
         document.getElementById('edit-contact-max-messages-per-day').value = contact.maxMessagesPerDay || 0;
         document.getElementById('edit-contact-push').checked = contact.push !== false; // Default to true if undefined
         document.getElementById('edit-contact-warmer').checked = contact.warmer !== false; // Default to true if undefined
+        
+        // Set up daily message limits
+        const limitsContainer = document.getElementById('edit-daily-limits-container');
+        limitsContainer.innerHTML = ''; // Clear existing rows
+        
+        // If the contact has daily message limits, populate them
+        if (contact.dailyMessageLimits && contact.dailyMessageLimits.length > 0) {
+            contact.dailyMessageLimits.forEach((limit, index) => {
+                const row = document.createElement('div');
+                row.className = 'daily-limit-row mb-2 row';
+                row.innerHTML = `
+                    <div class="col-5">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">Limit ${index + 1}</span>
+                            <input type="number" class="form-control daily-limit-value" min="0" max="1000" value="${limit.limit || 0}" placeholder="Limit">
+                        </div>
+                    </div>
+                    <div class="col-5">
+                        <div class="input-group input-group-sm">
+                            <input type="number" class="form-control daily-limit-timeout" min="0" max="1440" value="${limit.timeoutMinutes || 0}" placeholder="Timeout">
+                            <span class="input-group-text">minutes</span>
+                        </div>
+                    </div>
+                    <div class="col-2">
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-limit-btn">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+                limitsContainer.appendChild(row);
+            });
+        } else {
+            // Add a default empty row
+            this.addDailyLimitRow('edit-daily-limits-container');
+        }
+        
+        // Update the row numbers and button states
+        this.updateDailyLimitRowNumbers('edit-daily-limits-container');
 
         // Show the modal
         const modal = new bootstrap.Modal(document.getElementById('editContactModal'));
@@ -560,6 +639,21 @@ class WhatsAppAutoWarmer {
     async updateContact() {
         try {
             const contactId = document.getElementById('edit-contact-id').value;
+            
+            // Collect daily message limits
+            const dailyLimits = [];
+            const limitRows = document.querySelectorAll('#edit-daily-limits-container .daily-limit-row');
+            
+            limitRows.forEach((row, index) => {
+                const limitValue = parseInt(row.querySelector('.daily-limit-value').value) || 0;
+                const timeoutValue = parseInt(row.querySelector('.daily-limit-timeout').value) || 0;
+                
+                dailyLimits.push({
+                    limit: limitValue,
+                    timeoutMinutes: timeoutValue
+                });
+            });
+            
             const formData = {
                 name: document.getElementById('edit-contact-name').value.trim(),
                 phoneNumber: document.getElementById('edit-contact-phone').value.trim(),
@@ -569,7 +663,9 @@ class WhatsAppAutoWarmer {
                 warmer: document.getElementById('edit-contact-warmer').checked,
                 timeoutSeconds: parseInt(document.getElementById('edit-contact-timeout-seconds').value),
                 maxMessageTimeout: parseInt(document.getElementById('edit-contact-max-message-timeout').value),
-                maxMessagesPerDay: parseInt(document.getElementById('edit-contact-max-messages-per-day').value)
+                maxMessagesPerDay: parseInt(document.getElementById('edit-contact-max-messages-per-day').value),
+                dailyMessageLimits: dailyLimits
+                // Don't reset currentDailyLimitIndex when editing
             };
 
             if (!formData.name || !formData.phoneNumber) {
@@ -931,6 +1027,60 @@ class WhatsAppAutoWarmer {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+    
+    // Helper methods for daily limit management
+    addDailyLimitRow(containerId) {
+        const container = document.getElementById(containerId);
+        const existingRows = container.querySelectorAll('.daily-limit-row');
+        const newRowNumber = existingRows.length + 1;
+        
+        // Create a new row
+        const newRow = document.createElement('div');
+        newRow.className = 'daily-limit-row mb-2 row';
+        newRow.innerHTML = `
+            <div class="col-5">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text">Limit ${newRowNumber}</span>
+                    <input type="number" class="form-control daily-limit-value" min="0" max="1000" value="0" placeholder="Limit">
+                </div>
+            </div>
+            <div class="col-5">
+                <div class="input-group input-group-sm">
+                    <input type="number" class="form-control daily-limit-timeout" min="0" max="1440" value="0" placeholder="Timeout">
+                    <span class="input-group-text">minutes</span>
+                </div>
+            </div>
+            <div class="col-2">
+                <button type="button" class="btn btn-sm btn-outline-danger remove-limit-btn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+        
+        container.appendChild(newRow);
+        
+        // Enable/disable remove buttons based on row count
+        this.updateDailyLimitRowNumbers(containerId);
+    }
+    
+    updateDailyLimitRowNumbers(containerId) {
+        const container = document.getElementById(containerId);
+        const rows = container.querySelectorAll('.daily-limit-row');
+        
+        rows.forEach((row, index) => {
+            // Update the limit number
+            const limitLabel = row.querySelector('.input-group-text');
+            if (limitLabel) {
+                limitLabel.textContent = `Limit ${index + 1}`;
+            }
+            
+            // Enable/disable remove buttons (always keep at least one row)
+            const removeButton = row.querySelector('.remove-limit-btn');
+            if (removeButton) {
+                removeButton.disabled = rows.length <= 1;
+            }
+        });
     }
 
     async sendDirectMessage() {
