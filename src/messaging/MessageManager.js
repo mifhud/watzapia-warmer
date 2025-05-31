@@ -171,7 +171,6 @@ class MessageManager {
                     minWarmingInterval: 15, // seconds
                     maxWarmingInterval: 45, // seconds
                     timezone: 'Asia/Jakarta',
-                    maxMessagesPerDay: 50,
                     workingHours: {
                         start: '09:00',
                         end: '18:00'
@@ -189,7 +188,6 @@ class MessageManager {
                 minWarmingInterval: 15, // seconds
                 maxWarmingInterval: 45, // seconds
                 timezone: 'Asia/Jakarta',
-                maxMessagesPerDay: 50,
                 workingHours: {
                     start: '09:00',
                     end: '18:00'
@@ -650,13 +648,7 @@ class MessageManager {
                     continue;
                 }
                 
-                try {
-                    // Check daily message limits for this sender
-                    if (await this.hasReachedDailyLimit(senderId)) {
-                        console.log(`Contact ${senderId} has reached daily message limit, skipping`);
-                        continue;
-                    }
-                    
+                try {                    
                     // Get possible recipients (all contacts except the sender)
                     const possibleRecipients = connectedContacts.filter(id => id !== senderId);
                     
@@ -832,12 +824,6 @@ class MessageManager {
                     }
                     
                     try {
-                        // Check daily message limits for this sender
-                        if (await this.hasReachedDailyLimit(senderId)) {
-                            console.log(`Contact ${senderId} has reached daily message limit, skipping`);
-                            continue;
-                        }
-                        
                         // Randomly choose which group to send to
                         const randomValBetween1To5 = Math.floor(Math.random() * 5) + 1;
                         if (randomValBetween1To5 % 2 === 0) {
@@ -915,57 +901,29 @@ class MessageManager {
 
             // Send message
             const client = this.whatsappManager.getClient(senderId);
-            const result = await client.sendMessage(recipientNumber, messageData.message);
-
-            // Update contact statistics
-            await this.contactManager.updateContactMessageStats(senderId, 'sent');
+            await client.sendMessage(recipientNumber, messageData.message);
 
             // Log the warming message
             console.log(`Warming message sent: ${senderContact.name} -> ${recipientContact.name}`);
             console.log(`Template: ${template.name}`);
             console.log(`Message: ${messageData.message}`);
 
-            // Save to message history
-            await this.saveMessageToHistory({
-                type: 'warming',
-                senderId,
-                recipientId,
-                senderName: senderContact.name,
-                recipientName: recipientContact.name,
-                message: messageData.message,
-                templateId: template.id,
-                templateName: template.name,
-                messageId: result.id._serialized,
-                sentAt: new Date().toISOString()
-            });
-
-            // Check if recipient has reached daily limit before scheduling reply
-            if (await this.hasReachedDailyLimit(recipientId)) {
-                console.log(`Contact ${recipientId} has reached daily message limit, skipping reply`);
-            } else {
-                // Send reply message from recipient to sender after a random delay
-                const minDelay = this.config.minReplyDelay || 30; // Default to 30 seconds if not configured
-                const maxDelay = this.config.maxReplyDelay || 60; // Default to 60 seconds if not configured
-                const delayRange = maxDelay - minDelay;
-                const replyDelaySeconds = Math.floor(Math.random() * (delayRange + 1)) + minDelay;
-                console.log(`Scheduling reply message in ${replyDelaySeconds} seconds (range: ${minDelay}-${maxDelay}s)`);
+            // Send reply message from recipient to sender after a random delay
+            const minDelay = this.config.minReplyDelay || 30; // Default to 30 seconds if not configured
+            const maxDelay = this.config.maxReplyDelay || 60; // Default to 60 seconds if not configured
+            const delayRange = maxDelay - minDelay;
+            const replyDelaySeconds = Math.floor(Math.random() * (delayRange + 1)) + minDelay;
+            console.log(`Scheduling reply message in ${replyDelaySeconds} seconds (range: ${minDelay}-${maxDelay}s)`);
+            
+            setTimeout(async () => {
+                // Check if we're still within working hours when it's time to send the reply
+                if (this.config.enableWorkingHoursOnly && !this.isWithinWorkingHours()) {
+                    console.log('Outside working hours, skipping reply message');
+                    return;
+                }
                 
-                setTimeout(async () => {
-                    // Check if we're still within working hours when it's time to send the reply
-                    if (this.config.enableWorkingHoursOnly && !this.isWithinWorkingHours()) {
-                        console.log('Outside working hours, skipping reply message');
-                        return;
-                    }
-                    
-                    // Check again if recipient has reached daily limit
-                    if (await this.hasReachedDailyLimit(recipientId)) {
-                        console.log(`Contact ${recipientId} has reached daily message limit, skipping reply`);
-                        return;
-                    }
-                    
-                    await this.sendReplyMessage(recipientId, senderId, messageData.message);
-                }, replyDelaySeconds * 1000);
-            }
+                await this.sendReplyMessage(recipientId, senderId, messageData.message);
+            }, replyDelaySeconds * 1000);
 
         } catch (error) {
             console.error('Error sending warming message:', error);
@@ -997,34 +955,16 @@ class MessageManager {
 
             // Find the group and send message
             console.log(`Attempting to send message to group: ${targetGroupName1}`);
-            const result = await this.whatsappManager.sendMessageToGroup(
+            await this.whatsappManager.sendMessageToGroup(
                 senderId, 
                 targetGroupName1, 
                 messageData.message
             );
 
-            // Update contact statistics
-            await this.contactManager.updateContactMessageStats(senderId, 'sent');
-
             // Log the warming message
             console.log(`Warming message sent to group: ${senderContact.name} -> ${targetGroupName1}`);
             console.log(`Template: ${template.name}`);
             console.log(`Message: ${messageData.message}`);
-
-            // Save to message history
-            await this.saveMessageToHistory({
-                type: 'group_warming',
-                senderId,
-                recipientId: 'group',
-                senderName: senderContact.name,
-                recipientName: targetGroupName1,
-                message: messageData.message,
-                templateId: template.id,
-                templateName: template.name,
-                messageId: result.id._serialized,
-                sentAt: new Date().toISOString()
-            });
-
         } catch (error) {
             console.error('Error sending warming message to group:', error);
             throw error;
@@ -1074,37 +1014,15 @@ class MessageManager {
 
             // Send reply message
             const client = this.whatsappManager.getClient(senderId);
-            const result = await client.sendMessage(recipientNumber, replyMessage);
-
-            // Update contact statistics
-            await this.contactManager.updateContactMessageStats(senderId, 'sent');
+            await client.sendMessage(recipientNumber, replyMessage);
 
             // Log the reply message
             console.log(`Reply message sent: ${senderContact.name} -> ${recipientContact.name}`);
             console.log(`Message: ${replyMessage}`);
-
-            // Save to message history
-            await this.saveMessageToHistory({
-                type: 'reply',
-                senderId,
-                recipientId,
-                senderName: senderContact.name,
-                recipientName: recipientContact.name,
-                message: replyMessage,
-                messageId: result.id._serialized,
-                sentAt: new Date().toISOString(),
-                replyToMessage: originalMessage
-            });
-
         } catch (error) {
             console.error('Error sending reply message:', error);
             // Don't throw the error to prevent it from affecting the main flow
         }
-    }
-
-    async handleIncomingMessage(messageId, senderId, recipientId) {
-        // Update contact statistics
-        await this.contactManager.updateContactMessageStats(senderId, 'received');
     }
 
     isWithinWorkingHours() {
@@ -1113,51 +1031,6 @@ class MessageManager {
         
         return currentTime >= this.config.workingHours.start && 
                currentTime <= this.config.workingHours.end;
-    }
-
-    async hasReachedDailyLimit(contactId) {
-        try {
-            const today = moment().tz(this.config.timezone).format('YYYY-MM-DD');
-            const historyPath = path.join(__dirname, '../../data/message-history.json');
-            
-            if (!await fs.pathExists(historyPath)) {
-                return false;
-            }
-
-            const history = await fs.readJson(historyPath);
-            const todayMessages = history.filter(msg => 
-                msg.senderId === contactId && 
-                msg.sentAt.startsWith(today) &&
-                (msg.type === 'warming' || msg.type === 'reply' || msg.type === 'group_warming')
-            );
-
-            return todayMessages.length >= this.config.maxMessagesPerDay;
-        } catch (error) {
-            console.error('Error checking daily limit:', error);
-            return false;
-        }
-    }
-
-    async saveMessageToHistory(messageData) {
-        try {
-            const historyPath = path.join(__dirname, '../../data/message-history.json');
-            let history = [];
-            
-            if (await fs.pathExists(historyPath)) {
-                history = await fs.readJson(historyPath);
-            }
-            
-            history.push(messageData);
-            
-            // Keep only last 10000 messages
-            if (history.length > 10000) {
-                history = history.slice(-10000);
-            }
-            
-            await fs.writeJson(historyPath, history, { spaces: 2 });
-        } catch (error) {
-            console.error('Error saving message to history:', error);
-        }
     }
 
     getWarmerStatus() {

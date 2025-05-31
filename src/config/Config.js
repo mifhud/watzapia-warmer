@@ -10,7 +10,6 @@ class Config {
             minWarmingInterval: 15, // seconds
             maxWarmingInterval: 45, // seconds
             timezone: 'Asia/Jakarta',
-            maxMessagesPerDay: 50,
 
             // Working hours
             workingHours: {
@@ -153,15 +152,6 @@ class Config {
                 throw new Error('Timezone must be a valid string');
             }
             validated.timezone = updates.timezone.trim();
-        }
-        
-        // Validate max messages per day
-        if (updates.maxMessagesPerDay !== undefined) {
-            const maxMessages = parseInt(updates.maxMessagesPerDay);
-            if (isNaN(maxMessages) || maxMessages < 1 || maxMessages > 9999999999) {
-                throw new Error('Max messages per day must be between 1 and 9999999999');
-            }
-            validated.maxMessagesPerDay = maxMessages;
         }
         
         // Validate working hours

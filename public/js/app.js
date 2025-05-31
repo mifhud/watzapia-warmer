@@ -311,7 +311,6 @@ class WhatsAppAutoWarmer {
     populateConfigForm() {
         document.getElementById('min-warming-interval').value = this.config.minWarmingInterval || 15;
         document.getElementById('max-warming-interval').value = this.config.maxWarmingInterval || 45;
-        document.getElementById('max-messages').value = this.config.maxMessagesPerDay || 50;
         document.getElementById('targetGroupName1').value = this.config.targetGroupName1 || '';
         document.getElementById('targetGroupName2').value = this.config.targetGroupName2 || '';
         document.getElementById('tulilutCookie').value = this.config.tulilutCookie || '';
@@ -796,7 +795,6 @@ class WhatsAppAutoWarmer {
             const formData = {
                 minWarmingInterval: parseInt(document.getElementById('min-warming-interval').value),
                 maxWarmingInterval: parseInt(document.getElementById('max-warming-interval').value),
-                maxMessagesPerDay: parseInt(document.getElementById('max-messages').value),
                 targetGroupName1: document.getElementById('targetGroupName1').value,
                 targetGroupName2: document.getElementById('targetGroupName2').value,
                 tulilutCookie: document.getElementById('tulilutCookie').value,

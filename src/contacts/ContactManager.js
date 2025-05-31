@@ -64,10 +64,6 @@ class ContactManager {
                 updatedAt: new Date().toISOString(),
                 lastConnected: null,
                 lastDisconnected: null,
-                messagesSent: 0,
-                messagesReceived: 0,
-                lastMessageSent: null,
-                lastMessageReceived: null,
                 isActive: true,
                 push: contactData.push !== undefined ? contactData.push : true,
                 warmer: contactData.warmer !== undefined ? contactData.warmer : true,
@@ -182,29 +178,6 @@ class ContactManager {
         }
     }
 
-    async updateContactMessageStats(contactId, type, messageData = null) {
-        try {
-            const contact = await this.getContact(contactId);
-            if (!contact) {
-                throw new Error('Contact not found');
-            }
-
-            const updateData = {};
-            
-            if (type === 'sent') {
-                updateData.messagesSent = (contact.messagesSent || 0) + 1;
-                updateData.lastMessageSent = new Date().toISOString();
-            } else if (type === 'received') {
-                updateData.messagesReceived = (contact.messagesReceived || 0) + 1;
-                updateData.lastMessageReceived = new Date().toISOString();
-            }
-
-            await this.updateContact(contactId, updateData);
-        } catch (error) {
-            console.error('Error updating contact message stats:', error);
-        }
-    }
-
     async getContactByPhoneNumber(phoneNumber) {
         try {
             const contacts = await this.getAllContacts();
@@ -285,33 +258,6 @@ class ContactManager {
         } catch (error) {
             console.error('Error importing contacts:', error);
             throw error;
-        }
-    }
-
-    async getContactStats() {
-        try {
-            const contacts = await this.getAllContacts();
-            
-            const stats = {
-                total: contacts.length,
-                active: contacts.filter(c => c.isActive).length,
-                connected: contacts.filter(c => c.status === 'connected').length,
-                disconnected: contacts.filter(c => c.status === 'disconnected').length,
-                totalMessagesSent: contacts.reduce((sum, c) => sum + (c.messagesSent || 0), 0),
-                totalMessagesReceived: contacts.reduce((sum, c) => sum + (c.messagesReceived || 0), 0)
-            };
-
-            return stats;
-        } catch (error) {
-            console.error('Error getting contact stats:', error);
-            return {
-                total: 0,
-                active: 0,
-                connected: 0,
-                disconnected: 0,
-                totalMessagesSent: 0,
-                totalMessagesReceived: 0
-            };
         }
     }
 }

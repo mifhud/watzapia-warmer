@@ -269,10 +269,6 @@ class WhatsAppManager {
 
             // Emit to frontend for real-time updates
             this.io.emit('message_received', messageData);
-
-            // Save to message history
-            await this.saveMessageToHistory(messageData);
-
         } catch (error) {
             console.error('Error handling incoming message:', error);
         }
@@ -292,34 +288,8 @@ class WhatsAppManager {
 
             // Emit to frontend for real-time updates
             this.io.emit('message_sent', messageData);
-
-            // Save to message history
-            await this.saveMessageToHistory(messageData);
-
         } catch (error) {
             console.error('Error handling outgoing message:', error);
-        }
-    }
-
-    async saveMessageToHistory(messageData) {
-        try {
-            const historyPath = path.join(__dirname, '../../data/message-history.json');
-            let history = [];
-
-            if (await fs.pathExists(historyPath)) {
-                history = await fs.readJson(historyPath);
-            }
-
-            history.push(messageData);
-
-            // Keep only last 10000 messages to prevent file from growing too large
-            if (history.length > 10000) {
-                history = history.slice(-10000);
-            }
-
-            await fs.writeJson(historyPath, history, { spaces: 2 });
-        } catch (error) {
-            console.error('Error saving message to history:', error);
         }
     }
 

@@ -210,10 +210,8 @@ class WhatsAppAutoWarmer {
             'config.json': {
                 minWarmingInterval: 15, // seconds
                 maxWarmingInterval: 45, // seconds
-                timezone: 'Asia/Jakarta',
-                maxMessagesPerDay: 50
-            },
-            'message-history.json': []
+                timezone: 'Asia/Jakarta'
+            }
         };
 
         for (const [filename, defaultContent] of Object.entries(defaultFiles)) {
