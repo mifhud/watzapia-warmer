@@ -503,9 +503,6 @@ class MessageManager {
             this.contactMessageCounts[contactId] = 0;
         }
         
-        // Increment message count
-        this.contactMessageCounts[contactId]++;
-        
         // Get contact's timeout settings (or use defaults)
         const maxMessageTimeout = contact.maxMessageTimeout || 5;
         const timeoutSeconds = contact.timeoutSeconds || 60;
@@ -524,6 +521,9 @@ class MessageManager {
             return false; // Contact is now in timeout
         }
         
+        // Increment message count
+        this.contactMessageCounts[contactId]++;
+
         return true; // Contact can send messages
     }
     
@@ -551,14 +551,10 @@ class MessageManager {
                     // Even value - execute processWarming
                     console.log(`Even value (${randomBalancedValue}) - executing processWarming`);
                     await this.processWarming();
-                    // Note: messagesSentInTimeout is now incremented inside processWarming for each message
-                    console.log(`Messages sent in current timeout: ${this.messagesSentInTimeout}/${maxMessageTimeout}`);
                 } else {
                     // Odd value - execute processWarmingGroup
                     console.log(`Odd value (${randomBalancedValue}) - executing processWarmingGroup`);
                     await this.processWarmingGroup();
-                    // Note: messagesSentInTimeout is now incremented inside processWarmingGroup for each message
-                    console.log(`Messages sent in current timeout: ${this.messagesSentInTimeout}/${maxMessageTimeout}`);
                 }
 
                 // Check if tulilut cookie is configured to update device settings periodically
