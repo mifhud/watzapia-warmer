@@ -1017,18 +1017,6 @@ class MessageManager {
     }
 
     formatPhoneNumber(phoneNumber) {
-        // // Remove all non-digit characters except +
-        // let formatted = phoneNumber.replace(/[^\d+]/g, '');
-        
-        // // If it doesn't start with +, add country code (assuming Indonesia +62)
-        // if (!formatted.startsWith('+')) {
-        //     if (formatted.startsWith('0')) {
-        //         formatted = '+62' + formatted.substring(1);
-        //     } else {
-        //         formatted = '+62' + formatted;
-        //     }
-        // }
-        
         // Add @c.us for WhatsApp format
         return phoneNumber + '@c.us';
     }
