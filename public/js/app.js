@@ -450,7 +450,6 @@ class WhatsAppAutoWarmer {
                 warmer: document.getElementById('contact-warmer').checked,
                 timeoutSeconds: parseInt(document.getElementById('contact-timeout-seconds').value),
                 maxMessageTimeout: parseInt(document.getElementById('contact-max-message-timeout').value),
-                maxMessagesPerDay: parseInt(document.getElementById('contact-max-messages-per-day').value),
                 dailyMessageLimits: dailyLimits,
                 currentDailyLimitIndex: 0
             };
@@ -589,7 +588,6 @@ class WhatsAppAutoWarmer {
         document.getElementById('edit-contact-notes').value = contact.notes || '';
         document.getElementById('edit-contact-timeout-seconds').value = contact.timeoutSeconds || 60;
         document.getElementById('edit-contact-max-message-timeout').value = contact.maxMessageTimeout || 5;
-        document.getElementById('edit-contact-max-messages-per-day').value = contact.maxMessagesPerDay || 0;
         document.getElementById('edit-contact-push').checked = contact.push !== false; // Default to true if undefined
         document.getElementById('edit-contact-warmer').checked = contact.warmer !== false; // Default to true if undefined
         
@@ -663,7 +661,6 @@ class WhatsAppAutoWarmer {
                 warmer: document.getElementById('edit-contact-warmer').checked,
                 timeoutSeconds: parseInt(document.getElementById('edit-contact-timeout-seconds').value),
                 maxMessageTimeout: parseInt(document.getElementById('edit-contact-max-message-timeout').value),
-                maxMessagesPerDay: parseInt(document.getElementById('edit-contact-max-messages-per-day').value),
                 dailyMessageLimits: dailyLimits
                 // Don't reset currentDailyLimitIndex when editing
             };

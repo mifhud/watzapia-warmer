@@ -398,12 +398,6 @@ class Config {
                 type: 'string',
                 description: 'Timezone for scheduling (e.g., Asia/Jakarta)'
             },
-            maxMessagesPerDay: {
-                type: 'number',
-                min: 1,
-                max: 9999999999,
-                description: 'Maximum messages per contact per day'
-            },
 
             workingHours: {
                 type: 'object',

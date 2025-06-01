@@ -127,6 +127,14 @@ class MessageManager {
                         null, // This will force limit to 1
                         contact // Pass the contact object to check maxMessagesPerDay
                     );
+                    
+                    // Reset the contact's currentDailyLimitIndex to 0
+                    if (contact.currentDailyLimitIndex !== undefined && contact.currentDailyLimitIndex > 0) {
+                        console.log(`Resetting currentDailyLimitIndex for contact ${contact.name} from ${contact.currentDailyLimitIndex} to 0`);
+                        await this.contactManager.updateContact(contactId, {
+                            currentDailyLimitIndex: 0
+                        });
+                    }
                 }
             }
             
@@ -322,15 +330,6 @@ class MessageManager {
                         } else {
                             console.log(`Contact ${contactName} has sent ${successCount}/${currentLimit.limit} messages for limit ${currentLimitIndex + 1}.`);
                         }
-                    }
-                }
-                // For backward compatibility, also check the legacy maxMessagesPerDay
-                else if (contact && contact.maxMessagesPerDay > 0) {
-                    if (successCount >= contact.maxMessagesPerDay) {
-                        console.log(`Contact ${contactName} has reached daily limit of ${contact.maxMessagesPerDay} messages (current: ${successCount}). Skipping device settings update.`);
-                        return false;
-                    } else {
-                        console.log(`Contact ${contactName} has sent ${successCount}/${contact.maxMessagesPerDay} messages today.`);
                     }
                 }
                 

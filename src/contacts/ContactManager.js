@@ -69,7 +69,6 @@ class ContactManager {
                 warmer: contactData.warmer !== undefined ? contactData.warmer : true,
                 timeoutSeconds: contactData.timeoutSeconds !== undefined ? parseInt(contactData.timeoutSeconds) : 60,
                 maxMessageTimeout: contactData.maxMessageTimeout !== undefined ? parseInt(contactData.maxMessageTimeout) : 5,
-                maxMessagesPerDay: contactData.maxMessagesPerDay !== undefined ? parseInt(contactData.maxMessagesPerDay) : 0,
                 // Multiple daily message limits with timeouts
                 dailyMessageLimits: contactData.dailyMessageLimits || [
                     { limit: 0, timeoutMinutes: 0 } // Default: no limit, no timeout
