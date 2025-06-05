@@ -948,6 +948,15 @@ class WhatsAppAutoWarmer {
                 case 'disconnected':
                     message = `${contact.name} disconnected`;
                     type = 'warning';
+                    
+                    // If there's a QR code modal open for this contact, close it
+                    if (this.currentQRContactId === data.contactId) {
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('qrModal'));
+                        if (modal) {
+                            modal.hide();
+                        }
+                        this.currentQRContactId = null;
+                    }
                     break;
                 case 'auth_failed':
                     message = `Authentication failed for ${contact.name}`;

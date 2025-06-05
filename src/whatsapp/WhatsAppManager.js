@@ -10,6 +10,7 @@ class WhatsAppManager {
         this.clients = new Map(); // contactId -> client instance
         this.qrCodes = new Map(); // contactId -> qr code data
         this.connectionStatus = new Map(); // contactId -> status
+        this.disconnectedContacts = new Set(); // Track contacts that have been disconnected
         this.contactManager = new ContactManager();
     }
 
@@ -25,6 +26,9 @@ class WhatsAppManager {
             }
 
             console.log(`Connecting WhatsApp for contact: ${contact.name} (${contact.phoneNumber})`);
+
+            // Reset disconnected flag when user explicitly tries to connect
+            this.disconnectedContacts.delete(contactId);
 
             // Create WhatsApp client with LocalAuth
             const client = new Client({
@@ -43,6 +47,13 @@ class WhatsAppManager {
 
             client.on('qr', async (qr) => {
                 console.log(`QR Code generated for ${contact.name}`);
+                
+                // Check if the contact has been disconnected
+                if (this.disconnectedContacts.has(contactId)) {
+                    console.log(`Ignoring QR code for ${contact.name} as it was previously disconnected`);
+                    return;
+                }
+                
                 try {
                     const qrCodeDataURL = await qrcode.toDataURL(qr);
                     this.qrCodes.set(contactId, qrCodeDataURL);
@@ -98,6 +109,10 @@ class WhatsAppManager {
 
             client.on('disconnected', async (reason) => {
                 console.log(`WhatsApp disconnected for ${contact.name}:`, reason);
+                
+                // Mark this contact as disconnected to prevent showing QR code again
+                this.disconnectedContacts.add(contactId);
+                
                 this.updateConnectionStatus(contactId, 'disconnected', reason);
                 this.clients.delete(contactId);
                 this.qrCodes.delete(contactId);
@@ -158,6 +173,13 @@ class WhatsAppManager {
     setupClientEventHandlers(client, contactId, contact) {
         client.on('qr', async (qr) => {
             console.log(`QR Code generated for ${contact.name}`);
+            
+            // Check if the contact has been disconnected
+            if (this.disconnectedContacts.has(contactId)) {
+                console.log(`Ignoring QR code for ${contact.name} as it was previously disconnected`);
+                return;
+            }
+            
             try {
                 const qrCodeDataURL = await qrcode.toDataURL(qr);
                 this.qrCodes.set(contactId, qrCodeDataURL);
@@ -213,6 +235,10 @@ class WhatsAppManager {
 
         client.on('disconnected', async (reason) => {
             console.log(`WhatsApp disconnected for ${contact.name}:`, reason);
+            
+            // Mark this contact as disconnected to prevent showing QR code again
+            this.disconnectedContacts.add(contactId);
+            
             this.updateConnectionStatus(contactId, 'disconnected', reason);
             this.clients.delete(contactId);
             this.qrCodes.delete(contactId);
@@ -301,6 +327,9 @@ class WhatsAppManager {
             }
 
             console.log(`Disconnecting WhatsApp for contact: ${contactId}`);
+            
+            // Mark this contact as disconnected to prevent showing QR code again
+            this.disconnectedContacts.add(contactId);
 
             await client.destroy();
             this.clients.delete(contactId);
