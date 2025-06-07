@@ -13,6 +13,8 @@ A comprehensive WhatsApp automation application built with Node.js and whatsapp-
 - **Dynamic Variables**: Insert names, dates, and other dynamic data into messages
 - **Timezone Support**: Optimized for Asia/Jakarta timezone
 - **Working Hours**: Configure active hours for message sending
+- **Group Messaging**: Send messages to WhatsApp groups
+- **Tulilut Integration**: Integrate with Tulilut.xyz for advanced device management
 
 ### 📊 Dashboard & Monitoring
 - **Real-time Status**: Monitor connection status of all contacts
@@ -22,10 +24,11 @@ A comprehensive WhatsApp automation application built with Node.js and whatsapp-
 
 ### ⚙️ Configuration
 - **Customizable Intervals**: Set warming message intervals (1-1440 minutes)
-- **Daily Limits**: Configure maximum messages per contact per day
+- **Daily Limits**: Configure multiple message limits per contact per day
 - **Reply Timeout**: Set how long to wait for replies (1-168 hours)
 - **Working Hours**: Define active messaging hours
 - **Spam Prevention**: Built-in safeguards to prevent spam detection
+- **Scheduled Resets**: Automatically reset device settings at specified times
 
 ### 🎨 User Interface
 - **Modern Web Interface**: Clean, responsive Bootstrap-based UI
@@ -36,7 +39,7 @@ A comprehensive WhatsApp automation application built with Node.js and whatsapp-
 ## Installation
 
 ### Prerequisites
-- Node.js (v14 or higher) OR Docker
+- Node.js (v20 or higher) OR Docker
 - npm or yarn (for non-Docker installation)
 - Chrome/Chromium browser (for WhatsApp Web, automatically installed in Docker)
 
@@ -124,23 +127,33 @@ A comprehensive WhatsApp automation application built with Node.js and whatsapp-
 
 #### Warming Settings
 - **Warming Interval**: Time between warming messages (1-1440 minutes)
-- **Max Messages/Day**: Maximum messages per contact per day (1-9999999999)
+- **Max Messages/Day**: Maximum messages per contact per day (configurable per contact)
 - **Reply Timeout**: Hours to wait for reply before sending next message (1-168)
+- **Group Messaging**: Enable/disable sending messages to WhatsApp groups
+- **Target Group Names**: Configure target WhatsApp group names for messaging
 
 #### Working Hours
 - **Working Hours Only**: Enable to only send messages during specified hours
 - **Start/End Time**: Define the active messaging window
 
+#### Tulilut Integration
+- **Tulilut Cookie**: Set your Tulilut.xyz cookie for API integration
+- **Reset Time**: Configure when to automatically reset device settings
+- **Device Limits**: Automatically manage device limits based on daily message counts
+
 ## How Auto Warmer Works
 
 1. **Contact Selection**: Randomly selects a sender from connected contacts without pending replies
-2. **Recipient Selection**: Randomly selects a different connected contact as recipient
+2. **Recipient Selection**: Randomly selects a different connected contact or configured group as recipient
 3. **Template Selection**: Chooses a random active message template
 4. **Message Generation**: Creates message with dynamic variables (name, time, date)
 5. **Message Sending**: Sends the message via WhatsApp
 6. **Reply Tracking**: Tracks the message and waits for recipient's reply
 7. **Reply Requirement**: Sender cannot send another message until recipient replies or timeout expires
-8. **Cycle Repeat**: Process repeats based on configured interval
+8. **Daily Limit Management**: Manages daily message limits per contact, with progressive limits
+9. **Device Settings**: Integrates with Tulilut.xyz to manage device settings
+10. **Scheduled Resets**: Automatically resets device settings at configured times
+11. **Cycle Repeat**: Process repeats based on configured interval
 
 ## File Structure
 
@@ -157,7 +170,8 @@ whatsapp-auto-warmer/
 │   │   └── TemplateManager.js # Message template management
 │   ├── config/
 │   │   └── Config.js          # Configuration management
-│   └── utils/
+│   ├── server/                # Server-related functionality
+│   └── utils/                 # Utility functions
 ├── public/
 │   ├── index.html            # Web interface
 │   ├── css/style.css         # Styling
@@ -171,6 +185,7 @@ whatsapp-auto-warmer/
 ├── Dockerfile                # Docker container configuration
 ├── docker-compose.yml        # Docker Compose configuration
 ├── .dockerignore             # Files to exclude from Docker build
+├── truncate-logs.sh          # Script to truncate log files
 └── package.json              # Node.js dependencies and scripts
 ```
 
@@ -178,11 +193,15 @@ whatsapp-auto-warmer/
 
 All data is stored in JSON files in the `data/` directory:
 
-- **contacts.json**: Contact information and status
+- **contacts.json**: Contact information, status, and daily message limits
 - **message-templates.json**: Message templates and variations
-- **config.json**: Application configuration
+- **config.json**: Application configuration including Tulilut integration settings
 - **message-history.json**: Message sending history
 - **sessions/**: WhatsApp Web session data for each contact
+
+WhatsApp session data is stored in:
+- **.wwebjs_auth/**: Authentication data for WhatsApp Web sessions
+- **.wwebjs_cache/**: Cache data for WhatsApp Web sessions
 
 ## Security & Privacy
 
@@ -199,21 +218,30 @@ All data is stored in JSON files in the `data/` directory:
    - Ensure Chrome/Chromium is installed
    - Check if port 3000 is available
    - Try refreshing the page
+   - Verify the WhatsApp client is properly initialized
 
 2. **Connection Fails**
    - Verify phone number format includes country code
    - Ensure WhatsApp is active on the phone
    - Check internet connection
+   - Verify WhatsApp Web is not logged in elsewhere
 
 3. **Messages Not Sending**
    - Verify at least 2 contacts are connected
    - Check if within working hours (if enabled)
    - Ensure daily message limit not reached
+   - Verify Tulilut integration settings if enabled
 
 4. **Auto Warmer Won't Start**
    - Need minimum 2 connected contacts
    - Check for active message templates
    - Verify configuration settings
+   - Ensure group names are correct if sending to groups
+
+5. **Tulilut Integration Issues**
+   - Verify cookie value is correct and up-to-date
+   - Check if Tulilut.xyz is accessible
+   - Ensure device settings are properly configured
 
 ### Logs and Debugging
 
@@ -228,16 +256,24 @@ All data is stored in JSON files in the `data/` directory:
    - Check Docker logs: `docker-compose logs -f`
    - Ensure ports are not already in use
    - Verify Docker has sufficient resources
+   - Check if Node.js version in Dockerfile is compatible
 
 2. **QR Code Issues in Docker**
    - Ensure the container has all required dependencies
    - Check if Chromium is working properly in the container
    - Try rebuilding the image: `docker-compose build --no-cache`
+   - Verify Puppeteer environment variables are set correctly
 
 3. **Data Persistence Issues**
    - Verify volume mappings in docker-compose.yml
    - Check permissions on host directories
    - Ensure data directory exists on host
+   - Verify .wwebjs_auth and .wwebjs_cache directories are properly mounted
+
+4. **Performance Issues**
+   - Allocate sufficient resources to the Docker container
+   - Consider using a host with more CPU/RAM for multiple connections
+   - Monitor container resource usage with `docker stats`
 
 ## Support
 
